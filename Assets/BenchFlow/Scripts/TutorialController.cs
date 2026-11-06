@@ -9,18 +9,18 @@ namespace BenchFlow
         public Transform promptRoot;
         public TextMesh promptText;
         public Camera viewCamera;
-        public string previewStatus = "Drag R/LED onto the board • 1/2/3 add preview wires • Space verifies";
+        public string previewStatus = "";
         public CircuitGraph graph = new CircuitGraph();
         public bool resistorPlaced;
         public bool ledPlaced;
         public int stepIndex;
 
         readonly string[] instructions = {
-            "Pick up a resistor and place it across two breadboard strips.",
-            "Connect Arduino D13 to the resistor.",
-            "Place the LED with its legs in separate strips.",
-            "Connect the resistor to the LED's long leg (anode).",
-            "Connect the LED's short leg (cathode) to Arduino GND."
+            "Place a resistor across two strips.",
+            "Connect D13 to the resistor.",
+            "Place the LED across two strips.",
+            "Connect the resistor to the LED anode.",
+            "Connect the LED cathode to GND."
         };
 
         public string CurrentInstruction => instructions[Mathf.Clamp(stepIndex, 0, instructions.Length - 1)];
@@ -29,9 +29,8 @@ namespace BenchFlow
         {
             if (promptText != null) promptText.text = (stepIndex >= instructions.Length
                 ? "CIRCUIT VERIFIED\nD13 → resistor → LED → GND"
-                : $"STEP {stepIndex + 1} / {instructions.Length}\n{CurrentInstruction}") + "\n" + previewStatus;
-            if (promptRoot != null && viewCamera != null)
-                promptRoot.rotation = Quaternion.LookRotation(promptRoot.position - viewCamera.transform.position);
+                : $"STEP {stepIndex + 1} / {instructions.Length}\n{CurrentInstruction}");
+            if (promptRoot != null) promptRoot.localRotation = Quaternion.identity;
 
             if (marker == null || stepTargets == null || stepTargets.Length == 0) return;
             Transform target = stepTargets[Mathf.Clamp(stepIndex, 0, stepTargets.Length - 1)];

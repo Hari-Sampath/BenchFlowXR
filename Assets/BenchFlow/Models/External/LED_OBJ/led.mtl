@@ -1,0 +1,138 @@
+# Blender 5.2.0 LTS MTL File: 'None'
+# www.blender.org
+
+newmtl led_body_pbr
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+map_Kd led_body_basecolor.jpg
+map_Pm led_body_metallic-led_body_roughness_metallic.jpg
+map_Pr led_body_metallic-led_body_roughness_roughness.jpg
+map_Bump -bm 1.000000 led_body_normal.jpg
+
+newmtl led_lens_butter_x
+Kd 0.921582 0.644480 0.168269
+Ks 0.500000 0.500000 0.500000
+Ke 0.506870 0.354464 0.092548
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.080000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+newmtl led_lens_dim_butter_x
+Kd 0.921582 0.644480 0.168269
+Ks 0.500000 0.500000 0.500000
+Ke 0.138237 0.096672 0.025240
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.080000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+newmtl led_lens_dim_rgb_pink_x
+Kd 0.887923 0.254152 0.479320
+Ks 0.500000 0.500000 0.500000
+Ke 0.133188 0.038123 0.071898
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.080000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+newmtl led_lens_koralle_x
+Kd 0.854993 0.198069 0.149960
+Ks 0.500000 0.500000 0.500000
+Ke 0.470246 0.108938 0.082478
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.080000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+newmtl led_lens_mint_x
+Kd 0.274677 0.651406 0.467784
+Ks 0.500000 0.500000 0.500000
+Ke 0.151073 0.358273 0.257281
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.080000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+newmtl led_lens_rgb_cyan_x
+Kd 0.212231 0.745404 0.806952
+Ks 0.500000 0.500000 0.500000
+Ke 0.116727 0.409972 0.443824
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.080000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+newmtl led_lens_rgb_lila_x
+Kd 0.485150 0.391572 0.806952
+Ks 0.500000 0.500000 0.500000
+Ke 0.266832 0.215365 0.443824
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.080000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+newmtl led_lens_rgb_pink_x
+Kd 0.887923 0.254152 0.479320
+Ks 0.500000 0.500000 0.500000
+Ke 0.488358 0.139784 0.263626
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.080000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000

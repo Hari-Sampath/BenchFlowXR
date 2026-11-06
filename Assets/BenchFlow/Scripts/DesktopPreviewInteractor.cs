@@ -14,7 +14,7 @@ namespace BenchFlow
         public CircuitPart led;
         public Transform unoD13;
         public Transform unoGnd;
-        public string status = "Drag R/LED onto the board • 1/2/3 add preview wires • Space verifies";
+        public string status = "Drag a part • Space checks the step";
 
         CircuitPart heldPart;
         readonly List<LineRenderer> wireLines = new List<LineRenderer>();

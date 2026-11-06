@@ -1,0 +1,48 @@
+# Blender 5.2.0 LTS MTL File: 'None'
+# www.blender.org
+
+newmtl circuit-board_body_pbr
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+map_Kd circuit-board_body_basecolor.jpg
+map_Pm circuit-board_body_metallic-circuit-board_body_roughness_metallic.jpg
+map_Pr circuit-board_body_metallic-circuit-board_body_roughness_roughness.jpg
+map_Bump -bm 1.000000 circuit-board_body_normal.jpg
+
+newmtl circuit-board_led_mint_x
+Kd 0.274677 0.651406 0.467784
+Ks 0.500000 0.500000 0.500000
+Ke 0.384548 0.911968 0.654897
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.400000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+newmtl circuit-board_led_pink_x
+Kd 0.904661 0.381326 0.533276
+Ks 0.500000 0.500000 0.500000
+Ke 1.243092 0.355813 0.671048
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.400000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000

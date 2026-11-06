@@ -3,3 +3,12 @@ Model page: https://grab3d.com/models/electronics/breadboard/
 Downloaded 2026-11-05. The source package includes its CC0 license in Breadboard_OBJ/LICENSE.txt.
 
 Unity uses the bundled OBJ, MTL and JPEG textures under Breadboard_OBJ/. The source model is 165.1 x 54.45 x 20.6 mm before axis conversion. Visible holes, rails, and a few example components are part of the licensed model. BenchFlow keeps snapping coordinates and electrical connectivity in BreadboardGrid.cs.
+
+Additional workspace meshes are from Grab3D CC0 1.0 packages. Each source folder includes its own LICENSE.txt; the packages are bundled locally with their OBJ, MTL, and textures:
+
+- Workbench: https://grab3d.com/models/tools/workbench/ (downloaded 2026-11-05)
+- Resistor assembly: https://grab3d.com/models/electronics/resistor/ (downloaded 2026-11-05)
+- LED assembly: https://grab3d.com/models/electronics/led/ (downloaded 2026-11-05)
+- Generic controller board: https://grab3d.com/models/electronics/circuit-board/ (downloaded 2026-11-05)
+
+The controller board is an unbranded generic model. It is used as a visual stand-in in this prototype; tutorial pin names and circuit checks describe an Uno-compatible circuit. BenchFlow does not claim this generic mesh is an Arduino Uno product.

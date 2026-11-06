@@ -6,7 +6,9 @@ The provided workspace was empty: it contained no Unity project, scenes, package
 
 ## First vertical slice
 
-The visible breadboard uses a real-scale external 3D model. Its CC0 provenance is recorded beside the imported OBJ in `Assets/BenchFlow/Models/External/ATTRIBUTION.txt`; the board's hole grid and electrical mapping remain separate data in `BreadboardGrid`. The slice also includes snap coordinates, independent union-find circuit nets, deterministic D13 → resistor → LED → GND checks, a compact pulsing marker, a tutorial prompt, and a desktop-only preview interaction harness. `IWorkbenchInteractionPort` is the boundary for the Meta hand adapter and keeps input out of the circuit graph and validator.
+The scene follows the supplied visual reference: a wood workbench with the breadboard centered, a generic controller board on the left, staged components on the right, and a floating step card with cyan terminal labels and a pulsing blue target. The workbench, breadboard, LED assembly, resistor assembly, and generic controller board are bundled CC0 models; see `Assets/BenchFlow/Models/External/ATTRIBUTION.txt` and the license in each source folder. The board's hole grid and electrical mapping remain separate data in `BreadboardGrid`. The slice also includes snap coordinates, independent union-find circuit nets, deterministic D13 → resistor → LED → GND checks, and a desktop-only preview interaction harness. `IWorkbenchInteractionPort` is the boundary for a future Meta hand adapter and keeps input out of the circuit graph and validator.
+
+The controller board visual is generic and unbranded. “Uno-compatible” refers to the lesson's pin mapping and circuit, not to the mesh. This remains a desktop preview scene: XR rig, Meta hand input, Android configuration, and a Quest build have not been integrated.
 
 ## Open and generate the scene
 

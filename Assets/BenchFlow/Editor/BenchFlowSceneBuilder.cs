@@ -5,23 +5,32 @@ using UnityEngine.SceneManagement;
 
 namespace BenchFlow.Editor
 {
+    /// <summary>Builds the authored virtual workbench from licensed mesh assets and reusable scene systems.</summary>
     public static class BenchFlowSceneBuilder
     {
+        const string Models = "Assets/BenchFlow/Models/External/";
+        const float DeskTopY = 0.495f;
+
         [MenuItem("BenchFlow/Create VR Prototype Scene")]
         public static void CreatePrototypeScene()
         {
+            AssetDatabase.Refresh();
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            Material tabletop = MakeMaterial("Workbench", new Color(0.20f, 0.23f, 0.26f));
-            Material green = MakeMaterial("Arduino Green", new Color(0.08f, 0.38f, 0.25f));
-            Material blue = MakeMaterial("Hologram Blue", new Color(0.05f, 0.62f, 1f), true);
-            Material resistorColor = MakeMaterial("Resistor Body", new Color(0.68f, 0.43f, 0.20f));
-            Material ledColor = MakeMaterial("LED Red", new Color(0.85f, 0.06f, 0.04f), true);
-            Material metal = MakeMaterial("Component Leads", new Color(0.68f, 0.70f, 0.72f));
+            RenderSettings.ambientLight = new Color(0.39f, 0.43f, 0.49f);
+            RenderSettings.ambientIntensity = 0.45f;
 
-            GameObject table = Primitive("Workbench Surface", PrimitiveType.Cube, new Vector3(0, 0.72f, 0), new Vector3(1.45f, 0.08f, 0.95f), tabletop);
-            table.name = "Workbench Surface";
-            GameObject breadboardObject = new GameObject("Breadboard");
-            breadboardObject.transform.position = new Vector3(0.06f, 0.765f, 0.02f);
+            GameObject workbench = PlaceModel("Workbench Model (CC0)", Models + "Workbench_OBJ/workbench.obj",
+                new Vector3(0, 0, 0), Quaternion.identity, Vector3.one * 0.55f);
+            if (workbench == null) return;
+
+            Material blueGlow = MakeMaterial("Tutorial Hologram Blue", new Color(0.10f, 0.70f, 1f), true);
+            Material cyanGlow = MakeMaterial("Pin Label Cyan", new Color(0.35f, 0.92f, 1f), true);
+            Material panelMat = MakeMaterial("Instruction Glass", new Color(0.018f, 0.055f, 0.09f, 0.92f));
+            Material trayMat = MakeMaterial("Parts Tray", new Color(0.045f, 0.065f, 0.085f));
+
+            // The breadboard mesh retains the source model's texture; the grid remains an independent electrical system.
+            GameObject breadboardObject = new GameObject("Breadboard | electrical grid");
+            breadboardObject.transform.position = new Vector3(0.015f, DeskTopY, 0.0f);
             BreadboardGrid grid = breadboardObject.AddComponent<BreadboardGrid>();
             grid.rowCount = 63;
             grid.columnsPerSide = 5;
@@ -30,26 +39,44 @@ namespace BenchFlow.Editor
             grid.centerGap = 0.00762f;
             grid.railOffset = 0.0215f;
 
-            GameObject boardModelAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/BenchFlow/Models/External/Breadboard_OBJ/breadboard.obj");
-            if (boardModelAsset == null)
+            GameObject breadboardAsset = AssetDatabase.LoadAssetAtPath<GameObject>(Models + "Breadboard_OBJ/breadboard.obj");
+            if (breadboardAsset == null)
             {
-                Debug.LogError("Missing imported breadboard model at Assets/BenchFlow/Models/External/Breadboard_OBJ/breadboard.obj. Refresh the Project window, then run this menu again.");
+                Debug.LogError("Breadboard OBJ is missing or still importing. Refresh Assets, then run BenchFlow/Create VR Prototype Scene again.");
                 return;
             }
-            GameObject boardModel = (GameObject)PrefabUtility.InstantiatePrefab(boardModelAsset);
+            GameObject boardModel = (GameObject)PrefabUtility.InstantiatePrefab(breadboardAsset);
             boardModel.name = "Breadboard Model (CC0)";
             boardModel.transform.SetParent(breadboardObject.transform, false);
             boardModel.transform.localPosition = Vector3.zero;
-            boardModel.transform.localRotation = Quaternion.LookRotation(Vector3.up, Vector3.right);
+            boardModel.transform.localRotation = Quaternion.identity;
             boardModel.transform.localScale = Vector3.one;
-            var gridCollider = breadboardObject.AddComponent<BoxCollider>();
-            gridCollider.size = new Vector3(0.054f, 0.012f, 0.165f);
+            BoxCollider gridCollider = breadboardObject.AddComponent<BoxCollider>();
+            gridCollider.center = new Vector3(0, 0.01f, 0);
+            gridCollider.size = new Vector3(0.054f, 0.02f, 0.165f);
 
-            GameObject uno = Primitive("Arduino Uno", PrimitiveType.Cube, new Vector3(-0.02f, 0.768f, 0.02f), new Vector3(0.069f, 0.016f, 0.053f), green);
-            uno.transform.rotation = Quaternion.Euler(0, 90, 0);
+            // This is deliberately unbranded: it is a generic controller-board visual, not a genuine Arduino Uno model.
+            GameObject controller = PlaceModel("Controller Board (generic, CC0)", Models + "CircuitBoard_OBJ/circuit-board.obj",
+                new Vector3(-0.145f, DeskTopY, 0.015f), Quaternion.Euler(0, 90, 0), Vector3.one);
+            if (controller == null) return;
+            controller.AddComponent<BoxCollider>().size = new Vector3(0.10f, 0.025f, 0.065f);
 
-            GameObject marker = Primitive("Tutorial Hologram Marker", PrimitiveType.Sphere, grid.HolePosition(new HoleAddress(14, 2, BreadboardSide.Left, BreadboardRail.None)) + Vector3.up * 0.009f, Vector3.one * 0.015f, blue);
-            marker.name = "Tutorial Hologram Marker";
+            // Real downloaded part assemblies provide the loose component staging area at the right side of the desk.
+            GameObject tray = Primitive("Parts tray", PrimitiveType.Cube, new Vector3(0.165f, DeskTopY + 0.004f, 0.015f),
+                new Vector3(0.115f, 0.008f, 0.15f), trayMat);
+            GameObject ledSet = PlaceModel("LED component assortment (CC0)", Models + "LED_OBJ/led.obj",
+                new Vector3(0.165f, DeskTopY + 0.009f, 0.015f), Quaternion.identity, Vector3.one * 0.60f);
+            GameObject resistorSet = PlaceModel("Resistor component assortment (CC0)", Models + "Resistor_OBJ/resistor.obj",
+                new Vector3(0.165f, DeskTopY + 0.009f, -0.040f), Quaternion.Euler(0, 0, 90), Vector3.one * 0.48f);
+            if (ledSet == null || resistorSet == null) return;
+            // Keep imported component assemblies out of the scaled tray hierarchy. A child of the
+            // non-uniformly scaled tray inherits a compensating local scale when reparented, which
+            // makes its later interactive root unexpectedly enormous.
+
+            // Interactive tutorial targets remain small world-space markers; electrical state is not inferred from meshes.
+            GameObject marker = Primitive("Tutorial Hologram Marker", PrimitiveType.Sphere,
+                grid.HolePosition(new HoleAddress(14, 2, BreadboardSide.Left, BreadboardRail.None)) + Vector3.up * 0.009f,
+                Vector3.one * 0.006f, blueGlow);
             Object.DestroyImmediate(marker.GetComponent<Collider>());
             marker.AddComponent<HologramPulse>();
 
@@ -57,21 +84,32 @@ namespace BenchFlow.Editor
             WorkbenchState workbenchState = state.AddComponent<WorkbenchState>();
             workbenchState.breadboard = grid;
             TutorialController tutorial = state.AddComponent<TutorialController>();
-            tutorial.marker = marker.transform;
             tutorial.graph = workbenchState.Circuit;
             workbenchState.tutorial = tutorial;
-            GameObject promptBacker = Primitive("Tutorial Prompt Backer", PrimitiveType.Cube, new Vector3(0.06f, 1.00f, 0.10f), new Vector3(0.43f, 0.12f, 0.012f), MakeMaterial("Prompt Backer", new Color(0.035f, 0.10f, 0.16f)));
-            GameObject promptObject = new GameObject("Tutorial Prompt");
-            promptObject.transform.position = new Vector3(0.06f, 1.00f, 0.108f);
-            TextMesh promptText = promptObject.AddComponent<TextMesh>();
-            promptText.text = "STEP 1 / 5\nPick up a resistor and place it across two breadboard strips.";
-            promptText.anchor = TextAnchor.MiddleCenter;
-            promptText.alignment = TextAlignment.Center;
-            promptText.fontSize = 36;
-            promptText.characterSize = 0.004f;
-            promptText.color = new Color(0.65f, 0.90f, 1f);
-            tutorial.promptRoot = promptObject.transform;
-            tutorial.promptText = promptText;
+
+            GameObject pin13 = MakeAnchor("UNO-compatible digital pin 13", new Vector3(-0.102f, DeskTopY + 0.028f, -0.005f), cyanGlow);
+            GameObject pinGround = MakeAnchor("UNO-compatible GND", new Vector3(-0.102f, DeskTopY + 0.028f, 0.025f), cyanGlow);
+            MakePinLabel("13", pin13.transform.position + new Vector3(0.0f, 0.018f, 0.0f), cyanGlow);
+            MakePinLabel("GND", pinGround.transform.position + new Vector3(-0.002f, 0.018f, 0.0f), cyanGlow);
+
+            // Tutorial pickup targets use the real licensed assemblies as visual mesh children.
+            CircuitPart resistor = CreateModelPart("Resistor", "RESISTOR", resistorSet,
+                new Vector3(0.16f, DeskTopY + 0.035f, -0.02f), new Vector3(0.0f, 0.0f, -0.004f), new Vector3(0.0f, 0.0f, 0.004f));
+            CircuitPart led = CreateModelPart("LED", "LED", ledSet,
+                new Vector3(0.16f, DeskTopY + 0.035f, 0.04f), new Vector3(-0.004f, 0.0f, 0.0f), new Vector3(0.004f, 0.0f, 0.0f));
+
+            GameObject cameraObject = new GameObject("Workbench Preview Camera");
+            Camera camera = cameraObject.AddComponent<Camera>();
+            cameraObject.tag = "MainCamera";
+            cameraObject.transform.position = new Vector3(0.03f, 0.90f, -0.40f);
+            cameraObject.transform.LookAt(new Vector3(0.01f, 0.50f, 0.005f));
+            camera.fieldOfView = 44;
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = new Color(0.045f, 0.065f, 0.085f);
+
+            BuildInstructionCard(cameraObject.transform, panelMat, cyanGlow, tutorial);
+            GameObject target14 = MakePinLabel("14c", grid.HolePosition(new HoleAddress(14, 2, BreadboardSide.Left, BreadboardRail.None)) + Vector3.up * 0.012f + Vector3.left * 0.035f, cyanGlow);
+            GameObject target16 = MakePinLabel("16c", grid.HolePosition(new HoleAddress(16, 2, BreadboardSide.Left, BreadboardRail.None)) + Vector3.up * 0.012f + Vector3.right * 0.035f, cyanGlow);
             tutorial.stepTargets = new Transform[5];
             for (int i = 0; i < tutorial.stepTargets.Length; i++)
             {
@@ -79,26 +117,9 @@ namespace BenchFlow.Editor
                 target.transform.position = grid.HolePosition(new HoleAddress(5 + i * 4, 1, BreadboardSide.Left, BreadboardRail.None));
                 tutorial.stepTargets[i] = target.transform;
             }
-
-            GameObject cameraObject = new GameObject("Prototype Preview Camera");
-            Camera camera = cameraObject.AddComponent<Camera>();
-            cameraObject.tag = "MainCamera";
-            cameraObject.transform.position = new Vector3(0.02f, 0.98f, -0.29f);
-            cameraObject.transform.LookAt(new Vector3(0.04f, 0.77f, 0.02f));
-            camera.fieldOfView = 50;
             tutorial.viewCamera = camera;
+            tutorial.marker = marker.transform;
 
-            CircuitPart resistor = CreatePreviewPart("Resistor", "RESISTOR", PrimitiveType.Cube,
-                new Vector3(0.00f, 0.76f, -0.14f), new Vector3(0.007f, 0.006f, 0.014f), resistorColor, metal);
-            CircuitPart led = CreatePreviewPart("LED", "LED", PrimitiveType.Sphere,
-                new Vector3(0.08f, 0.76f, -0.14f), new Vector3(0.008f, 0.008f, 0.008f), ledColor, metal);
-            resistor.terminalOffsetA = new Vector3(0f, 0f, -0.00508f);
-            resistor.terminalOffsetB = new Vector3(0f, 0f, 0.00508f);
-            led.terminalOffsetA = new Vector3(0f, 0f, -0.00508f);
-            led.terminalOffsetB = new Vector3(0f, 0f, 0.00508f);
-
-            Transform d13Anchor = MakeAnchor("Arduino D13", new Vector3(0.012f, 0.778f, -0.005f), new Color(0.92f, 0.55f, 0.10f));
-            Transform groundAnchor = MakeAnchor("Arduino GND", new Vector3(0.012f, 0.778f, 0.045f), new Color(0.12f, 0.16f, 0.20f));
             DesktopPreviewInteractor preview = state.AddComponent<DesktopPreviewInteractor>();
             preview.previewCamera = camera;
             preview.breadboard = grid;
@@ -106,58 +127,117 @@ namespace BenchFlow.Editor
             preview.tutorial = tutorial;
             preview.resistor = resistor;
             preview.led = led;
-            preview.unoD13 = d13Anchor;
-            preview.unoGnd = groundAnchor;
-            tutorial.viewCamera = camera;
+            preview.unoD13 = pin13.transform;
+            preview.unoGnd = pinGround.transform;
 
-            GameObject lightObject = new GameObject("Workbench Light");
-            Light light = lightObject.AddComponent<Light>();
+            GameObject keyLight = new GameObject("Workbench Key Light");
+            Light light = keyLight.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 1.2f;
-            lightObject.transform.rotation = Quaternion.Euler(48, -25, 0);
+            light.intensity = 0.90f;
+            keyLight.transform.rotation = Quaternion.Euler(48, -28, 0);
+
+            GameObject fillLight = new GameObject("Workbench Fill Light");
+            Light fill = fillLight.AddComponent<Light>();
+            fill.type = LightType.Directional;
+            fill.intensity = 0.22f;
+            fill.color = new Color(0.45f, 0.74f, 1f);
+            fillLight.transform.rotation = Quaternion.Euler(22, 145, 0);
 
             EditorSceneManager.SaveScene(scene, "Assets/BenchFlow/Scenes/BenchFlowPrototype.unity");
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene("Assets/BenchFlow/Scenes/BenchFlowPrototype.unity", true) };
             AssetDatabase.SaveAssets();
-            Debug.Log("BenchFlow prototype scene created. XR rig and Meta Interaction SDK input must be connected after package version is confirmed.");
+            Debug.Log("BenchFlow virtual workbench scene created with licensed meshes and a desktop interaction harness. XR rig/Meta hand input remain a separate integration step.");
         }
 
-        static CircuitPart CreatePreviewPart(string name, string componentId, PrimitiveType bodyType,
-            Vector3 stagingPosition, Vector3 bodyScale, Material bodyMaterial, Material leadMaterial)
+        static GameObject PlaceModel(string name, string path, Vector3 position, Quaternion rotation, Vector3 scale)
         {
-            GameObject root = new GameObject(name);
-            root.transform.position = stagingPosition;
+            GameObject asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (asset == null)
+            {
+                Debug.LogError("Missing or unimported model at " + path + ". Refresh the Project window and run the scene builder again.");
+                return null;
+            }
+            GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(asset);
+            instance.name = name;
+            instance.transform.position = position;
+            instance.transform.rotation = rotation;
+            instance.transform.localScale = scale;
+            return instance;
+        }
+
+        static CircuitPart CreateModelPart(string name, string componentId, GameObject model,
+            Vector3 position, Vector3 terminalA, Vector3 terminalB)
+        {
+            GameObject root = new GameObject(name + " | interactive component");
+            root.transform.position = position;
             CircuitPart part = root.AddComponent<CircuitPart>();
             part.componentId = componentId;
+            part.terminalOffsetA = terminalA;
+            part.terminalOffsetB = terminalB;
             BoxCollider collider = root.AddComponent<BoxCollider>();
             collider.center = new Vector3(0, 0.008f, 0);
-            collider.size = new Vector3(0.016f, 0.018f, 0.018f);
-
-            GameObject body = Primitive(name + " Body", bodyType, stagingPosition + Vector3.up * 0.004f, bodyScale, bodyMaterial);
-            body.transform.SetParent(root.transform, true);
-            Object.DestroyImmediate(body.GetComponent<Collider>());
-            for (int sign = -1; sign <= 1; sign += 2)
-            {
-                GameObject lead = Primitive(name + " Lead", PrimitiveType.Cylinder,
-                    stagingPosition + new Vector3(0, 0.001f, sign * 0.0035f), new Vector3(0.001f, 0.0025f, 0.001f), leadMaterial);
-                lead.transform.rotation = Quaternion.Euler(90, 0, 0);
-                lead.transform.SetParent(root.transform, true);
-                Object.DestroyImmediate(lead.GetComponent<Collider>());
-            }
+            collider.size = new Vector3(0.018f, 0.018f, 0.02f);
+            model.transform.SetParent(root.transform, false);
+            model.transform.localPosition = Vector3.zero;
+            model.transform.localRotation = Quaternion.identity;
             return part;
         }
 
-        static Transform MakeAnchor(string name, Vector3 position, Color color)
+        static void BuildInstructionCard(Transform camera, Material backerMaterial, Material accent, TutorialController tutorial)
         {
-            Material mat = MakeMaterial(name + " Material", color, true);
-            GameObject anchor = Primitive(name, PrimitiveType.Sphere, position, Vector3.one * 0.015f, mat);
-            return anchor.transform;
+            GameObject card = Primitive("Guided Step Card", PrimitiveType.Cube, Vector3.zero, Vector3.one, backerMaterial);
+            card.transform.SetParent(camera, false);
+            card.transform.localPosition = new Vector3(-0.095f, 0.16f, 0.62f);
+            card.transform.localRotation = Quaternion.identity;
+            card.transform.localScale = new Vector3(0.22f, 0.105f, 0.006f);
+            Object.DestroyImmediate(card.GetComponent<Collider>());
+
+            GameObject prompt = MakeText("Step instruction", "Place the resistor\nFollow the glowing target", Color.white, 0.0021f,
+                new Vector3(-0.187f, 0.182f, 0.617f), camera);
+            TextMesh promptMesh = prompt.GetComponent<TextMesh>();
+            tutorial.promptRoot = prompt.transform;
+            tutorial.promptText = promptMesh;
+        }
+
+        static GameObject MakeText(string name, string value, Color color, float size, Vector3 localPosition, Transform parent)
+        {
+            GameObject obj = new GameObject(name);
+            obj.transform.SetParent(parent, false);
+            obj.transform.localPosition = localPosition;
+            obj.transform.localRotation = Quaternion.identity;
+            TextMesh text = obj.AddComponent<TextMesh>();
+            text.text = value;
+            text.anchor = TextAnchor.MiddleLeft;
+            text.alignment = TextAlignment.Left;
+            text.fontSize = 64;
+            text.characterSize = size;
+            text.color = color;
+            return obj;
+        }
+
+        static GameObject MakePinLabel(string label, Vector3 position, Material material)
+        {
+            GameObject tag = Primitive("Pin label " + label, PrimitiveType.Cube, position, new Vector3(0.027f, 0.008f, 0.014f),
+                MakeMaterial("Pin label back", new Color(0.02f, 0.12f, 0.17f, 0.92f)));
+            Object.DestroyImmediate(tag.GetComponent<Collider>());
+            GameObject textObject = MakeText("Pin text " + label, label, material.color, 0.0022f, position + Vector3.up * 0.006f, null);
+            textObject.transform.rotation = Quaternion.Euler(90, 0, 0);
+            return tag;
+        }
+
+        static GameObject MakeAnchor(string name, Vector3 position, Material material)
+        {
+            GameObject anchor = Primitive(name, PrimitiveType.Sphere, position, Vector3.one * 0.005f, material);
+            Object.DestroyImmediate(anchor.GetComponent<SphereCollider>());
+            return anchor;
         }
 
         static GameObject Primitive(string name, PrimitiveType type, Vector3 position, Vector3 scale, Material material)
         {
             GameObject obj = GameObject.CreatePrimitive(type);
-            obj.name = name; obj.transform.position = position; obj.transform.localScale = scale;
+            obj.name = name;
+            obj.transform.position = position;
+            obj.transform.localScale = scale;
             obj.GetComponent<Renderer>().sharedMaterial = material;
             return obj;
         }
@@ -167,7 +247,11 @@ namespace BenchFlow.Editor
             Shader shader = Shader.Find("Universal Render Pipeline/Lit");
             if (shader == null) shader = Shader.Find("Standard");
             Material mat = new Material(shader) { name = name, color = color };
-            if (emission) { mat.EnableKeyword("_EMISSION"); mat.SetColor("_EmissionColor", color * 2.5f); }
+            if (emission)
+            {
+                mat.EnableKeyword("_EMISSION");
+                mat.SetColor("_EmissionColor", color * 2.25f);
+            }
             return mat;
         }
     }
