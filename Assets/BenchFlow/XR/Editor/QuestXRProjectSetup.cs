@@ -9,6 +9,7 @@ using UnityEditor.XR.OpenXR.Features;
 using UnityEngine;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
+using UnityEngine.XR.OpenXR.Features;
 using UnityEngine.XR.Hands.OpenXR;
 
 namespace BenchFlow.XR.Editor
@@ -27,6 +28,13 @@ namespace BenchFlow.XR.Editor
 
         static void ConfigureProject()
         {
+            // XR Plug-in Management cannot assign loaders while Unity is entering or running Play mode.
+            // Keep the setup queued until the editor returns to edit mode.
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                EditorApplication.delayCall += ConfigureProject;
+                return;
+            }
             if (EditorApplication.isCompiling || EditorApplication.isUpdating)
             {
                 EditorApplication.delayCall += ConfigureProject;

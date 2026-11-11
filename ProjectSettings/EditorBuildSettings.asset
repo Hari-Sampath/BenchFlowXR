@@ -8,5 +8,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/BenchFlow/Scenes/BenchFlowPrototype.unity
     guid: 0b48fef4950194a10bcb4bc8c805d039
-  m_configObjects: {}
+  m_configObjects:
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: dbd868367764042b7b5587ec9acc5cb4, type: 2}
+    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 64ee2aad8cd27419187b4c067b6021ac, type: 2}
   m_UseUCBPForAssetBundles: 0

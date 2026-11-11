@@ -104,7 +104,7 @@ namespace BenchFlow
             if (!wiring || handPoseSource == null || workbench == null) return;
             Transform origin = rayOrigin != null ? rayOrigin : handPoseSource;
             bool gotHit = Physics.Raycast(origin.position, origin.forward, out RaycastHit hit, rayDistance, interactionLayers);
-            WireEndpoint endpoint;
+            WireEndpoint endpoint = default;
             bool foundEndpoint = gotHit && TryGetEndpoint(hit, out endpoint);
             if (!foundEndpoint && !TryFindFixedEndpoint(origin, out endpoint)) return;
             if (string.IsNullOrEmpty(endpoint.node)) return;
