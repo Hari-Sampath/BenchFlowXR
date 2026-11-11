@@ -15,29 +15,27 @@ using UnityEngine.XR.Hands.OpenXR;
 namespace BenchFlow.XR.Editor
 {
     /// <summary>Creates the Android OpenXR loader configuration and the reusable runtime rig prefab.</summary>
-    [InitializeOnLoad]
     internal static class QuestXRProjectSetup
     {
         const string RigPrefabPath = "Assets/Resources/BenchFlow/QuestXRPlayerRig.prefab";
         const string XrSettingsPath = "Assets/XR/XRGeneralSettingsPerBuildTarget.asset";
 
-        static QuestXRProjectSetup()
-        {
-            EditorApplication.delayCall += ConfigureProject;
-        }
-
+        [MenuItem("BenchFlow/Configure Quest XR Project")]
         static void ConfigureProject()
         {
-            // XR Plug-in Management cannot assign loaders while Unity is entering or running Play mode.
-            // Keep the setup queued until the editor returns to edit mode.
             if (EditorApplication.isPlayingOrWillChangePlaymode)
             {
-                EditorApplication.delayCall += ConfigureProject;
+                Debug.LogWarning("BenchFlow XR: Stop Play mode before configuring the Quest project.");
                 return;
             }
             if (EditorApplication.isCompiling || EditorApplication.isUpdating)
             {
-                EditorApplication.delayCall += ConfigureProject;
+                Debug.LogWarning("BenchFlow XR: Wait for Unity to finish compiling and importing before configuring the Quest project.");
+                return;
+            }
+            if (!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.Android, BuildTarget.Android))
+            {
+                Debug.LogWarning("BenchFlow XR: Install Android Build Support in Unity Hub, then run BenchFlow > Configure Quest XR Project.");
                 return;
             }
             CreateRigPrefab();
