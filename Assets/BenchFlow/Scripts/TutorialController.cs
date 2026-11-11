@@ -65,9 +65,16 @@ namespace BenchFlow
             switch (stepIndex)
             {
                 case 0: complete = resistorPlaced; break;
-                case 1: complete = graph.AreConnected("UNO:D13", "RESISTOR:A"); break;
+                case 1: complete = graph.AreConnected("UNO:D13", "RESISTOR:A") ||
+                                    graph.AreConnected("UNO:D13", "RESISTOR:B"); break;
                 case 2: complete = ledPlaced; break;
-                case 3: complete = graph.AreConnected("RESISTOR:B", "LED:ANODE"); break;
+                case 3:
+                    bool d13AtA = graph.AreConnected("UNO:D13", "RESISTOR:A");
+                    bool d13AtB = graph.AreConnected("UNO:D13", "RESISTOR:B");
+                    complete = d13AtA
+                        ? graph.AreConnected("RESISTOR:B", "LED:ANODE")
+                        : d13AtB && graph.AreConnected("RESISTOR:A", "LED:ANODE");
+                    break;
                 default: complete = graph.AreConnected("LED:CATHODE", "UNO:GND"); break;
             }
 

@@ -26,6 +26,8 @@ namespace BenchFlow.XR
         Camera xrCamera;
         InputDevice headDevice;
         readonly List<Camera> disabledCameras = new List<Camera>();
+        readonly List<Transform> tutorialUi = new List<Transform>();
+        readonly List<Transform> tutorialUiParents = new List<Transform>();
         bool wasActive;
 
         void Awake()
@@ -33,7 +35,7 @@ namespace BenchFlow.XR
             GameObject cameraObject = new GameObject("XR Head Camera");
             cameraObject.transform.SetParent(transform, false);
             xrCamera = cameraObject.AddComponent<Camera>();
-            xrCamera.tag = "MainCamera";
+            xrCamera.tag = "Untagged";
             xrCamera.nearClipPlane = 0.01f;
             xrCamera.stereoTargetEye = StereoTargetEyeMask.Both;
             xrCamera.enabled = false;
@@ -44,8 +46,18 @@ namespace BenchFlow.XR
             bool xrActive = XRSettings.isDeviceActive;
             if (xrActive != wasActive)
             {
-                if (xrActive) DisableOtherMainCameras();
-                else RestoreOtherMainCameras();
+                if (xrActive)
+                {
+                    MoveTutorialUiToXrCamera();
+                    DisableOtherMainCameras();
+                    xrCamera.tag = "MainCamera";
+                }
+                else
+                {
+                    xrCamera.tag = "Untagged";
+                    RestoreOtherMainCameras();
+                    RestoreTutorialUiParents();
+                }
                 wasActive = xrActive;
             }
             xrCamera.enabled = xrActive;
@@ -60,7 +72,36 @@ namespace BenchFlow.XR
                 xrCamera.transform.localRotation = rotation;
         }
 
-        void OnDestroy() => RestoreOtherMainCameras();
+        void OnDestroy()
+        {
+            RestoreOtherMainCameras();
+            RestoreTutorialUiParents();
+        }
+
+        void MoveTutorialUiToXrCamera()
+        {
+            tutorialUi.Clear();
+            tutorialUiParents.Clear();
+            MoveTutorialElement("Guided Step Card");
+            MoveTutorialElement("Step instruction");
+        }
+
+        void MoveTutorialElement(string objectName)
+        {
+            GameObject element = GameObject.Find(objectName);
+            if (element == null) return;
+            tutorialUi.Add(element.transform);
+            tutorialUiParents.Add(element.transform.parent);
+            element.transform.SetParent(xrCamera.transform, false);
+        }
+
+        void RestoreTutorialUiParents()
+        {
+            for (int i = 0; i < tutorialUi.Count; i++)
+                if (tutorialUi[i] != null) tutorialUi[i].SetParent(tutorialUiParents[i], false);
+            tutorialUi.Clear();
+            tutorialUiParents.Clear();
+        }
 
         void DisableOtherMainCameras()
         {

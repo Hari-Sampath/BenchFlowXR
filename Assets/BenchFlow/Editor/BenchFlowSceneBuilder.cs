@@ -146,7 +146,7 @@ namespace BenchFlow.Editor
             EditorSceneManager.SaveScene(scene, "Assets/BenchFlow/Scenes/BenchFlowPrototype.unity");
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene("Assets/BenchFlow/Scenes/BenchFlowPrototype.unity", true) };
             AssetDatabase.SaveAssets();
-            Debug.Log("BenchFlow virtual workbench scene created with licensed meshes and a desktop interaction harness. XR rig/Meta hand input remain a separate integration step.");
+            Debug.Log("BenchFlow virtual workbench scene created with licensed meshes, desktop preview interaction, and an XR hand interaction adapter.");
         }
 
         static GameObject PlaceModel(string name, string path, Vector3 position, Quaternion rotation, Vector3 scale)
