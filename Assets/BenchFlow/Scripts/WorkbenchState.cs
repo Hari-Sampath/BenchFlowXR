@@ -17,11 +17,15 @@ namespace BenchFlow
         public void BeginGrab(CircuitPart part, Pose handPose)
         {
             if (part == null) return;
+            if (!parts.Contains(part)) parts.Add(part);
             part.isSnapped = false;
             RebuildCircuit();
         }
 
-        public void UpdateGrab(CircuitPart part, Pose handPose) => part.transform.SetPositionAndRotation(handPose.position, handPose.rotation);
+        public void UpdateGrab(CircuitPart part, Pose handPose)
+        {
+            if (part != null) part.transform.SetPositionAndRotation(handPose.position, handPose.rotation);
+        }
 
         public void EndGrab(CircuitPart part, Vector3 releasePosition)
         {
