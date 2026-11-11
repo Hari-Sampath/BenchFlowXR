@@ -33,48 +33,77 @@ namespace BenchFlow
 
         public bool TrySnap(Vector3 worldPosition, out HoleAddress hole, out Vector3 snappedPosition)
         {
+            if (rowCount < 1 || columnsPerSide < 1 || holeSpacing <= 0f || rowSpacing <= 0f)
+            {
+                hole = default;
+                snappedPosition = worldPosition;
+                return false;
+            }
+
             Vector3 local = transform.InverseTransformPoint(worldPosition);
             int rawRow = Mathf.RoundToInt((rowCount - 1) * 0.5f - local.z / rowSpacing);
-            int row = rawRow;
-            row = Mathf.Clamp(row, 0, rowCount - 1);
+            int row = Mathf.Clamp(rawRow, 0, Mathf.Max(0, rowCount - 1));
+            float localZ = ((rowCount - 1) * 0.5f - row) * rowSpacing;
 
             float leftStart = -centerGap * 0.5f - (columnsPerSide - 1) * holeSpacing * 0.5f;
             float rightStart = centerGap * 0.5f;
-            float railDistance = Mathf.Abs(local.x + railOffset);
-            bool positiveRail = local.x < 0f;
-            float negativeRailDistance = Mathf.Abs(local.x - railOffset);
+            int leftColumn = Mathf.Clamp(Mathf.RoundToInt((local.x - leftStart) / holeSpacing), 0, columnsPerSide - 1);
+            int rightColumn = Mathf.Clamp(Mathf.RoundToInt((local.x - rightStart) / holeSpacing), 0, columnsPerSide - 1);
+            float leftDistance = Mathf.Abs(local.x - (leftStart + leftColumn * holeSpacing));
+            float rightDistance = Mathf.Abs(local.x - (rightStart + rightColumn * holeSpacing));
+            float positiveRailDistance = Mathf.Abs(local.x + railOffset);
+            float groundRailDistance = Mathf.Abs(local.x - railOffset);
+            float nearestDistance = Mathf.Min(Mathf.Min(leftDistance, rightDistance), Mathf.Min(positiveRailDistance, groundRailDistance));
 
-            if (Mathf.Min(railDistance, negativeRailDistance) < holeSpacing * 0.55f)
+            if (positiveRailDistance <= nearestDistance)
             {
-                hole = new HoleAddress(row, 0, BreadboardSide.Left,
-                    positiveRail ? BreadboardRail.Positive : BreadboardRail.Ground);
+                hole = new HoleAddress(row, 0, BreadboardSide.Left, BreadboardRail.Positive);
             }
+            else if (groundRailDistance <= nearestDistance)
+                hole = new HoleAddress(row, 0, BreadboardSide.Right, BreadboardRail.Ground);
+            else if (leftDistance <= rightDistance)
+                hole = new HoleAddress(row, leftColumn, BreadboardSide.Left, BreadboardRail.None);
             else
-            {
-                BreadboardSide side = local.x < 0f ? BreadboardSide.Left : BreadboardSide.Right;
-                float start = side == BreadboardSide.Left ? leftStart : rightStart;
-                int column = Mathf.Clamp(Mathf.RoundToInt((local.x - start) / holeSpacing), 0, columnsPerSide - 1);
-                hole = new HoleAddress(row, column, side, BreadboardRail.None);
-            }
+                hole = new HoleAddress(row, rightColumn, BreadboardSide.Right, BreadboardRail.None);
 
             snappedPosition = HolePosition(hole);
-            float maxHalfLength = (rowCount - 1) * rowSpacing * 0.5f + rowSpacing * 0.5f;
-            return rawRow >= 0 && rawRow < rowCount && Mathf.Abs(local.z) <= maxHalfLength &&
-                   Mathf.Abs(local.x) <= railOffset + holeSpacing;
+            float maxXDistance = holeSpacing * 0.5f + 0.00001f;
+            float maxZDistance = rowSpacing * 0.5f + 0.00001f;
+            return rowCount > 0 && columnsPerSide > 0 && holeSpacing > 0f && rowSpacing > 0f &&
+                   rawRow >= 0 && rawRow < rowCount && Mathf.Abs(local.z - localZ) <= maxZDistance &&
+                   nearestDistance <= maxXDistance;
         }
 
         public string ElectricalNode(HoleAddress hole)
         {
             if (hole.rail != BreadboardRail.None) return "rail:" + hole.rail;
-            return string.Format("strip:{0}:{1}", hole.side, hole.row);
+            return string.Format("strip:{0}:{1}", hole.side, Mathf.Clamp(hole.row, 0, Mathf.Max(0, rowCount - 1)));
+        }
+
+        public bool TryGetElectricalNode(HoleAddress hole, out string node)
+        {
+            node = null;
+            if (rowCount < 1 || columnsPerSide < 1 || hole.row < 0 || hole.row >= rowCount) return false;
+            if (hole.rail != BreadboardRail.None)
+            {
+                if (hole.rail != BreadboardRail.Positive && hole.rail != BreadboardRail.Ground) return false;
+                node = ElectricalNode(hole);
+                return true;
+            }
+
+            if ((hole.side != BreadboardSide.Left && hole.side != BreadboardSide.Right) ||
+                hole.column < 0 || hole.column >= columnsPerSide) return false;
+            node = ElectricalNode(hole);
+            return true;
         }
 
         public void ConnectBoardNets(CircuitGraph graph)
         {
+            if (graph == null) return;
             // Each five-hole group on a row is one strip. Rails run continuously end to end.
             graph.RegisterNode("rail:" + BreadboardRail.Positive);
             graph.RegisterNode("rail:" + BreadboardRail.Ground);
-            for (int row = 0; row < rowCount; row++)
+            for (int row = 0; row < Mathf.Max(0, rowCount); row++)
             {
                 graph.RegisterNode(ElectricalNode(new HoleAddress(row, 0, BreadboardSide.Left, BreadboardRail.None)));
                 graph.RegisterNode(ElectricalNode(new HoleAddress(row, 0, BreadboardSide.Right, BreadboardRail.None)));
