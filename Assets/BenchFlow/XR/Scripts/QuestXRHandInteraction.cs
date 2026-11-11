@@ -82,7 +82,13 @@ namespace BenchFlow.XR
 
             if (!pinched && state.pinched) EndGrab(state);
             if (pinched && !state.pinched && port != null) BeginGrab(state, handPose);
-            if (pinched && state.part != null) port?.UpdateGrab(state.part, handPose);
+            if (pinched && state.part != null)
+            {
+                Pose heldPose = new Pose(
+                    handPose.position + handPose.rotation * state.grabLocalPosition,
+                    handPose.rotation * state.grabLocalRotation);
+                port?.UpdateGrab(state.part, heldPose);
+            }
             state.pinched = pinched;
         }
 
@@ -106,6 +112,9 @@ namespace BenchFlow.XR
 
             if (closest == null) return;
             state.part = closest;
+            Quaternion inverseHandRotation = Quaternion.Inverse(handPose.rotation);
+            state.grabLocalPosition = inverseHandRotation * (closest.transform.position - handPose.position);
+            state.grabLocalRotation = inverseHandRotation * closest.transform.rotation;
             port.BeginGrab(state.part, handPose);
         }
 
@@ -120,6 +129,8 @@ namespace BenchFlow.XR
         {
             public bool pinched;
             public CircuitPart part;
+            public Vector3 grabLocalPosition;
+            public Quaternion grabLocalRotation;
         }
     }
 }

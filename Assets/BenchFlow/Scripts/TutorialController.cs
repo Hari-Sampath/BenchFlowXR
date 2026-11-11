@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace BenchFlow
@@ -9,6 +10,7 @@ namespace BenchFlow
         public Vector3 markerOffset = new Vector3(0f, 0.006f, 0f);
         public Transform promptRoot;
         public TextMesh promptText;
+        [Min(12)] public int promptCharactersPerLine = 30;
         public Camera viewCamera;
         public string previewStatus = "";
         public CircuitGraph graph = new CircuitGraph();
@@ -43,7 +45,8 @@ namespace BenchFlow
                     ? "CIRCUIT VERIFIED\nD13 → resistor → LED → GND"
                     : $"STEP {stepIndex + 1} / {instructions.Length}\n{CurrentInstruction}";
                 string feedback = string.IsNullOrEmpty(previewStatus) ? verificationFeedback : previewStatus;
-                promptText.text = string.IsNullOrEmpty(feedback) ? instruction : instruction + "\n\n" + feedback;
+                promptText.text = WrapText(string.IsNullOrEmpty(feedback) ? instruction : instruction + "\n" + feedback,
+                    Mathf.Max(12, promptCharactersPerLine));
             }
             if (promptRoot != null) promptRoot.localRotation = Quaternion.identity;
 
@@ -90,6 +93,35 @@ namespace BenchFlow
         {
             verificationFeedback = result.message;
             return result;
+        }
+
+        static string WrapText(string value, int lineLimit)
+        {
+            string[] paragraphs = value.Split('\n');
+            List<string> lines = new List<string>();
+            foreach (string paragraph in paragraphs)
+            {
+                string line = "";
+                string[] words = paragraph.Split(' ');
+                foreach (string word in words)
+                {
+                    if (line.Length == 0)
+                    {
+                        line = word;
+                    }
+                    else if (line.Length + 1 + word.Length <= lineLimit)
+                    {
+                        line += " " + word;
+                    }
+                    else
+                    {
+                        lines.Add(line);
+                        line = word;
+                    }
+                }
+                lines.Add(line);
+            }
+            return string.Join("\n", lines);
         }
     }
 }

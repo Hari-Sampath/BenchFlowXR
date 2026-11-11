@@ -187,13 +187,13 @@ namespace BenchFlow.Editor
         {
             GameObject card = Primitive("Guided Step Card", PrimitiveType.Cube, Vector3.zero, Vector3.one, backerMaterial);
             card.transform.SetParent(camera, false);
-            card.transform.localPosition = new Vector3(-0.095f, 0.16f, 0.62f);
+            card.transform.localPosition = new Vector3(-0.145f, 0.16f, 0.62f);
             card.transform.localRotation = Quaternion.identity;
-            card.transform.localScale = new Vector3(0.22f, 0.105f, 0.006f);
+            card.transform.localScale = new Vector3(0.34f, 0.18f, 0.006f);
             Object.DestroyImmediate(card.GetComponent<Collider>());
 
-            GameObject prompt = MakeText("Step instruction", "Place the resistor\nFollow the glowing target", Color.white, 0.0021f,
-                new Vector3(-0.187f, 0.182f, 0.617f), camera);
+            GameObject prompt = MakeText("Step instruction", "Place the resistor\nFollow the glowing target", Color.white, 0.00045f,
+                new Vector3(-0.298f, 0.16f, 0.617f), camera);
             TextMesh promptMesh = prompt.GetComponent<TextMesh>();
             tutorial.promptRoot = prompt.transform;
             tutorial.promptText = promptMesh;
@@ -209,7 +209,7 @@ namespace BenchFlow.Editor
             text.text = value;
             text.anchor = TextAnchor.MiddleLeft;
             text.alignment = TextAlignment.Left;
-            text.fontSize = 64;
+            text.fontSize = 40;
             text.characterSize = size;
             text.color = color;
             return obj;
@@ -220,7 +220,7 @@ namespace BenchFlow.Editor
             GameObject tag = Primitive("Pin label " + label, PrimitiveType.Cube, position, new Vector3(0.027f, 0.008f, 0.014f),
                 MakeMaterial("Pin label back", new Color(0.02f, 0.12f, 0.17f, 0.92f)));
             Object.DestroyImmediate(tag.GetComponent<Collider>());
-            GameObject textObject = MakeText("Pin text " + label, label, material.color, 0.0022f, position + Vector3.up * 0.006f, null);
+            GameObject textObject = MakeText("Pin text " + label, label, material.color, 0.00035f, position + Vector3.up * 0.006f, null);
             textObject.transform.rotation = Quaternion.Euler(90, 0, 0);
             return tag;
         }
