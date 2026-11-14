@@ -147,7 +147,7 @@ namespace BenchFlow
         }
 
         /// <summary>Snap a world position to the nearest breadboard hole.</summary>
-        public bool TrySnap(Vector3 worldPosition, out HoleAddress hole, out Vector3 snappedWorldPosition, float maxDistance = 0.012f)
+        public bool TrySnap(Vector3 worldPosition, out HoleAddress hole, out Vector3 snappedWorldPosition, float maxDistance = 0.015f)
         {
             Vector3 local = transform.InverseTransformPoint(worldPosition);
 
@@ -189,7 +189,8 @@ namespace BenchFlow
 
             snappedWorldPosition = HolePosition(hole);
             float dist = Vector3.Distance(worldPosition, snappedWorldPosition);
-            return dist <= maxDistance;
+            float effectiveMaxDist = maxDistance * Mathf.Max(transform.lossyScale.x, 1f);
+            return dist <= effectiveMaxDist;
         }
 
         /// <summary>Electrical strip identifier. Holes on the same 5-hole strip share the same ID.</summary>

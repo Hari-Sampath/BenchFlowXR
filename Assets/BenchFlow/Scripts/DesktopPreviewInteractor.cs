@@ -151,7 +151,7 @@ namespace BenchFlow
         public void ConnectWireD13To8b()
         {
             if (workbench == null || breadboard == null) return;
-            Vector3 start = unoD13 != null ? unoD13.position : new Vector3(-0.102f, 0.523f, -0.005f);
+            Vector3 start = unoD13 != null ? unoD13.position : new Vector3(-0.165f, 0.523f, -0.075f);
             Vector3 end = breadboard.HolePosition(breadboard.GetHole("8b"));
             workbench.ConnectWireVisual("UNO:D13", "strip:A:8", start, end, Color.red);
         }
@@ -159,7 +159,7 @@ namespace BenchFlow
         public void ConnectWireGndTo16a()
         {
             if (workbench == null || breadboard == null) return;
-            Vector3 start = unoGnd != null ? unoGnd.position : new Vector3(-0.102f, 0.523f, 0.025f);
+            Vector3 start = unoGnd != null ? unoGnd.position : new Vector3(-0.165f, 0.523f, -0.035f);
             Vector3 end = breadboard.HolePosition(breadboard.GetHole("16a"));
             workbench.ConnectWireVisual("strip:A:16", "UNO:GND", end, start, new Color(0.1f, 0.85f, 1f));
         }

@@ -7,13 +7,14 @@ namespace BenchFlow.Editor
 {
     /// <summary>
     /// Builds the complete VR and Desktop interactive workbench scene for BenchFlow XR.
-    /// Follows the reference video design: 4-step guided lesson with real breadboard alignment,
+    /// Follows the reference video design: breadboard is scaled and brought close to the foreground,
     /// 3D discrete components, VR 6-DOF hand tracking, interactive wiring, and live Arduino Blink simulation.
     /// </summary>
     public static class BenchFlowSceneBuilder
     {
         const string Models = "Assets/BenchFlow/Models/External/";
         const float DeskTopY = 0.495f;
+        const float BoardScale = 1.65f; // Scaled up so breadboard is prominent, clear, and easily targetable
 
         [MenuItem("BenchFlow/Create VR Prototype Scene")]
         public static void CreatePrototypeScene()
@@ -23,7 +24,7 @@ namespace BenchFlow.Editor
 
             // Realistic workbench ambient lighting
             RenderSettings.ambientLight = new Color(0.42f, 0.46f, 0.52f);
-            RenderSettings.ambientIntensity = 0.5f;
+            RenderSettings.ambientIntensity = 0.55f;
 
             // 1. Workbench Desk Model
             GameObject workbench = PlaceModel("Workbench Model (CC0)", Models + "Workbench_OBJ/workbench.obj",
@@ -32,7 +33,6 @@ namespace BenchFlow.Editor
             // Shaders and Materials
             Material blueGlow = MakeMaterial("Tutorial Hologram Blue", new Color(0.10f, 0.70f, 1f), true);
             Material cyanGlow = MakeMaterial("Pin Label Cyan", new Color(0.30f, 0.90f, 1f), true);
-            Material greenGlow = MakeMaterial("Verified Green", new Color(0.2f, 0.95f, 0.4f), true);
             Material panelMat = MakeMaterial("Instruction Glass", new Color(0.02f, 0.05f, 0.08f, 0.94f));
             Material trayMat = MakeMaterial("Parts Tray", new Color(0.05f, 0.07f, 0.09f));
             Material ceramicMat = MakeMaterial("Resistor Ceramic", new Color(0.85f, 0.74f, 0.58f));
@@ -41,9 +41,11 @@ namespace BenchFlow.Editor
             Material ledRedLit = MakeMaterial("LED Red Lit", new Color(1f, 0.15f, 0.15f, 1f), true);
             Material runBtnMat = MakeMaterial("Run Button Mat", new Color(0.08f, 0.55f, 0.85f), true);
 
-            // 2. Breadboard Object & Grid (Rows 1-63 along X, Columns a-j along Z)
+            // 2. Breadboard Object & Grid (Enlarged & brought close to foreground, matching reference video)
             GameObject breadboardObject = new GameObject("Breadboard | Electrical Grid");
-            breadboardObject.transform.position = new Vector3(0.015f, DeskTopY, 0.0f);
+            breadboardObject.transform.position = new Vector3(0.01f, DeskTopY, -0.065f);
+            breadboardObject.transform.localScale = Vector3.one * BoardScale;
+
             BreadboardGrid grid = breadboardObject.AddComponent<BreadboardGrid>();
             grid.rowCount = 63;
             grid.columnsPerSide = 5;
@@ -70,23 +72,23 @@ namespace BenchFlow.Editor
 
             // 3. Arduino-Compatible Controller Board (at left of breadboard)
             GameObject controller = PlaceModel("Controller Board (Generic, CC0)", Models + "CircuitBoard_OBJ/circuit-board.obj",
-                new Vector3(-0.145f, DeskTopY, 0.015f), Quaternion.Euler(0, 90, 0), Vector3.one);
+                new Vector3(-0.21f, DeskTopY, -0.06f), Quaternion.Euler(0, 90, 0), Vector3.one * 1.35f);
             if (controller != null)
             {
                 controller.AddComponent<BoxCollider>().size = new Vector3(0.10f, 0.025f, 0.065f);
             }
 
             // Arduino Pin Anchors
-            GameObject pin13 = MakeAnchor("UNO Digital Pin 13", new Vector3(-0.102f, DeskTopY + 0.025f, -0.005f), cyanGlow);
-            GameObject pinGnd = MakeAnchor("UNO GND", new Vector3(-0.102f, DeskTopY + 0.025f, 0.025f), cyanGlow);
-            MakePinLabel("13", pin13.transform.position + Vector3.up * 0.015f, cyanGlow);
-            MakePinLabel("GND", pinGnd.transform.position + Vector3.up * 0.015f, cyanGlow);
+            GameObject pin13 = MakeAnchor("UNO Digital Pin 13", new Vector3(-0.165f, DeskTopY + 0.028f, -0.075f), cyanGlow);
+            GameObject pinGnd = MakeAnchor("UNO GND", new Vector3(-0.165f, DeskTopY + 0.028f, -0.035f), cyanGlow);
+            MakePinLabel("13", pin13.transform.position + Vector3.up * 0.016f, cyanGlow);
+            MakePinLabel("GND", pinGnd.transform.position + Vector3.up * 0.016f, cyanGlow);
 
             // Arduino Built-in D13 LED Indicator
             GameObject unoLedObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
             unoLedObj.name = "Arduino D13 Built-in LED";
-            unoLedObj.transform.position = new Vector3(-0.118f, DeskTopY + 0.023f, -0.005f);
-            unoLedObj.transform.localScale = new Vector3(0.003f, 0.002f, 0.003f);
+            unoLedObj.transform.position = new Vector3(-0.185f, DeskTopY + 0.026f, -0.075f);
+            unoLedObj.transform.localScale = new Vector3(0.004f, 0.002f, 0.004f);
             Object.DestroyImmediate(unoLedObj.GetComponent<Collider>());
             Renderer unoLedRenderer = unoLedObj.GetComponent<Renderer>();
             Material unoLedOff = MakeMaterial("Uno LED Off", new Color(0.3f, 0.25f, 0.05f));
@@ -95,30 +97,30 @@ namespace BenchFlow.Editor
 
             // 4. Parts Tray (on the right)
             GameObject tray = Primitive("Parts Tray", PrimitiveType.Cube,
-                new Vector3(0.165f, DeskTopY + 0.004f, 0.015f),
-                new Vector3(0.115f, 0.008f, 0.15f), trayMat);
+                new Vector3(0.22f, DeskTopY + 0.005f, -0.06f),
+                new Vector3(0.13f, 0.008f, 0.16f), trayMat);
 
-            // 5. Discrete 220 Ω Resistor Component
+            // 5. Discrete 220 Ω Resistor Component (proportioned to BoardScale)
             CircuitPart resistor = CreateDiscreteResistor(
                 "Resistor 220 Ohm",
-                new Vector3(0.165f, DeskTopY + 0.015f, -0.025f),
-                ceramicMat, wireMetalMat);
+                new Vector3(0.22f, DeskTopY + 0.018f, -0.10f),
+                ceramicMat, wireMetalMat, BoardScale);
 
-            // 6. Discrete Red 5mm LED Component
+            // 6. Discrete Red 5mm LED Component (proportioned to BoardScale)
             CircuitPart led = CreateDiscreteLed(
                 "Red LED",
-                new Vector3(0.165f, DeskTopY + 0.015f, 0.035f),
-                ledRedOff, wireMetalMat);
+                new Vector3(0.22f, DeskTopY + 0.018f, -0.02f),
+                ledRedOff, wireMetalMat, BoardScale);
 
             // Light for when the LED lights up
             GameObject ledLightObj = new GameObject("LED Light Source");
             ledLightObj.transform.SetParent(led.transform, false);
-            ledLightObj.transform.localPosition = new Vector3(0f, 0.012f, 0f);
+            ledLightObj.transform.localPosition = new Vector3(0f, 0.016f, 0f);
             Light ledPointLight = ledLightObj.AddComponent<Light>();
             ledPointLight.type = LightType.Point;
             ledPointLight.color = new Color(1f, 0.2f, 0.2f);
-            ledPointLight.intensity = 0.8f;
-            ledPointLight.range = 0.12f;
+            ledPointLight.intensity = 1.0f;
+            ledPointLight.range = 0.18f;
             ledPointLight.enabled = false;
 
             // 7. Workbench State & Simulation Systems
@@ -144,22 +146,22 @@ namespace BenchFlow.Editor
             tutorial.blinkAnimator = blinkAnimator;
             workbenchState.tutorial = tutorial;
 
-            // 8. Holographic Guided Markers & Labels
+            // 8. Holographic Guided Markers & Labels (dynamically placed at scaled breadboard holes)
             // Step 1: LED (14c & 16c)
-            GameObject marker14c = MakeTargetMarker("Marker 14c", grid.HolePosition(grid.GetHole("14c")), blueGlow, "14c");
-            GameObject marker16c = MakeTargetMarker("Marker 16c", grid.HolePosition(grid.GetHole("16c")), blueGlow, "16c");
+            GameObject marker14c = MakeTargetMarker("Marker 14c", grid.HolePosition(grid.GetHole("14c")), blueGlow, "14c", BoardScale);
+            GameObject marker16c = MakeTargetMarker("Marker 16c", grid.HolePosition(grid.GetHole("16c")), blueGlow, "16c", BoardScale);
             tutorial.markerHole14c = marker14c;
             tutorial.markerHole16c = marker16c;
 
             // Step 2: Resistor (8d & 14d)
-            GameObject marker8d = MakeTargetMarker("Marker 8d", grid.HolePosition(grid.GetHole("8d")), blueGlow, "8d");
-            GameObject marker14d = MakeTargetMarker("Marker 14d", grid.HolePosition(grid.GetHole("14d")), blueGlow, "14d");
+            GameObject marker8d = MakeTargetMarker("Marker 8d", grid.HolePosition(grid.GetHole("8d")), blueGlow, "8d", BoardScale);
+            GameObject marker14d = MakeTargetMarker("Marker 14d", grid.HolePosition(grid.GetHole("14d")), blueGlow, "14d", BoardScale);
             tutorial.markerHole8d = marker8d;
             tutorial.markerHole14d = marker14d;
 
             // Step 3: Wires (Pin 13 -> 8b, GND -> 16a)
-            GameObject marker8b = MakeTargetMarker("Marker 8b", grid.HolePosition(grid.GetHole("8b")), blueGlow, "8b");
-            GameObject marker16a = MakeTargetMarker("Marker 16a", grid.HolePosition(grid.GetHole("16a")), blueGlow, "16a");
+            GameObject marker8b = MakeTargetMarker("Marker 8b", grid.HolePosition(grid.GetHole("8b")), blueGlow, "8b", BoardScale);
+            GameObject marker16a = MakeTargetMarker("Marker 16a", grid.HolePosition(grid.GetHole("16a")), blueGlow, "16a", BoardScale);
             tutorial.markerPin13 = pin13;
             tutorial.markerHole8b = marker8b;
             tutorial.markerPinGnd = pinGnd;
@@ -167,31 +169,31 @@ namespace BenchFlow.Editor
 
             // 9. Floating 3D Guided Card (tilted towards VR player)
             GameObject cardObj = BuildGuidedCard(
-                new Vector3(0.015f, DeskTopY + 0.22f, 0.16f),
+                new Vector3(0.01f, DeskTopY + 0.28f, 0.12f),
                 Quaternion.Euler(18f, 0f, 0f),
                 panelMat, cyanGlow, tutorial);
 
             // 10. Interactive 3D RUN Button
             GameObject runBtn = BuildRunButton(
-                new Vector3(0.115f, DeskTopY + 0.018f, -0.045f),
+                new Vector3(0.135f, DeskTopY + 0.018f, -0.130f),
                 runBtnMat, tutorial);
 
-            // 11. VR Rig & Player (Positioned in front of the bench)
+            // 11. VR Rig & Player (Positioned at comfortable viewing distance from foreground breadboard)
             GameObject vrRigObj = new GameObject("[XR Rig] Player");
-            vrRigObj.transform.position = new Vector3(0.015f, DeskTopY + 0.40f, -0.45f);
+            vrRigObj.transform.position = new Vector3(0.01f, DeskTopY + 0.38f, -0.42f);
             VRRig vrRig = vrRigObj.AddComponent<VRRig>();
-            vrRig.standingBenchOffset = new Vector3(0.015f, DeskTopY + 0.40f, -0.45f);
+            vrRig.standingBenchOffset = new Vector3(0.01f, DeskTopY + 0.38f, -0.42f);
 
             GameObject cameraObj = new GameObject("CenterEyeCamera");
             cameraObj.transform.SetParent(vrRigObj.transform, false);
             cameraObj.tag = "MainCamera";
             Camera cam = cameraObj.AddComponent<Camera>();
             cam.nearClipPlane = 0.05f;
-            cam.fieldOfView = 50f;
+            cam.fieldOfView = 52f;
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.05f, 0.07f, 0.09f);
-            cameraObj.transform.localPosition = new Vector3(0f, 0.25f, 0f);
-            cameraObj.transform.localRotation = Quaternion.Euler(24f, 0f, 0f);
+            cameraObj.transform.localPosition = Vector3.zero;
+            cameraObj.transform.localRotation = Quaternion.Euler(36f, 0f, 0f);
 
             vrRig.headTransform = cameraObj.transform;
             vrRig.centerEyeCamera = cam;
@@ -199,7 +201,7 @@ namespace BenchFlow.Editor
             // VR Hands
             GameObject leftHandObj = new GameObject("LeftHandController");
             leftHandObj.transform.SetParent(vrRigObj.transform, false);
-            leftHandObj.transform.localPosition = new Vector3(-0.15f, 0.05f, 0.25f);
+            leftHandObj.transform.localPosition = new Vector3(-0.16f, -0.05f, 0.26f);
             VRHandInteractor leftHand = leftHandObj.AddComponent<VRHandInteractor>();
             leftHand.handNode = UnityEngine.XR.XRNode.LeftHand;
             leftHand.workbench = workbenchState;
@@ -209,7 +211,7 @@ namespace BenchFlow.Editor
 
             GameObject rightHandObj = new GameObject("RightHandController");
             rightHandObj.transform.SetParent(vrRigObj.transform, false);
-            rightHandObj.transform.localPosition = new Vector3(0.15f, 0.05f, 0.25f);
+            rightHandObj.transform.localPosition = new Vector3(0.16f, -0.05f, 0.26f);
             VRHandInteractor rightHand = rightHandObj.AddComponent<VRHandInteractor>();
             rightHand.handNode = UnityEngine.XR.XRNode.RightHand;
             rightHand.workbench = workbenchState;
@@ -233,14 +235,13 @@ namespace BenchFlow.Editor
             GameObject keyLight = new GameObject("Workbench Key Light");
             Light key = keyLight.AddComponent<Light>();
             key.type = LightType.Directional;
-            key.intensity = 1.0f;
+            key.intensity = 1.05f;
             keyLight.transform.rotation = Quaternion.Euler(50, -30, 0);
 
             GameObject fillLight = new GameObject("Workbench Fill Light");
             Light fill = fillLight.AddComponent<Light>();
             fill.type = LightType.Directional;
-            fill.intensity = 0.35f;
-            fill.color = new Color(0.6f, 0.8f, 1f);
+            fill.intensity = 0.40f;
             fillLight.transform.rotation = Quaternion.Euler(25, 140, 0);
 
             // Save Scene
@@ -248,22 +249,26 @@ namespace BenchFlow.Editor
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene("Assets/BenchFlow/Scenes/BenchFlowPrototype.unity", true) };
             AssetDatabase.SaveAssets();
 
-            Debug.Log("BenchFlow VR Workbench scene successfully generated! Compatible with Meta Quest, OpenXR, and Desktop Preview.");
+            Debug.Log("BenchFlow VR Workbench scene successfully generated with enlarged, foreground-centered breadboard!");
         }
 
-        static CircuitPart CreateDiscreteResistor(string name, Vector3 pos, Material bodyMat, Material leadMat)
+        static CircuitPart CreateDiscreteResistor(string name, Vector3 pos, Material bodyMat, Material leadMat, float scale)
         {
             GameObject root = new GameObject(name);
             root.transform.position = pos;
             root.transform.rotation = Quaternion.identity;
 
-            // Main cylindrical ceramic body (10mm long, 3mm diameter)
+            float leadSpanHalf = 0.00762f * scale; // 6 rows span at scale
+            float bodyRadius = 0.0032f * scale;
+            float bodyLength = 0.0055f * scale;
+
+            // Ceramic body
             GameObject body = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             body.name = "Resistor Body";
             body.transform.SetParent(root.transform, false);
-            body.transform.localScale = new Vector3(0.0032f, 0.005f, 0.0032f);
+            body.transform.localScale = new Vector3(bodyRadius, bodyLength, bodyRadius);
             body.transform.localRotation = Quaternion.Euler(0, 0, 90);
-            body.transform.localPosition = new Vector3(0, 0.004f, 0);
+            body.transform.localPosition = new Vector3(0, 0.004f * scale, 0);
             body.GetComponent<Renderer>().sharedMaterial = bodyMat;
             Object.DestroyImmediate(body.GetComponent<Collider>());
 
@@ -277,20 +282,20 @@ namespace BenchFlow.Editor
             CreateBand("Band3_Brown", body.transform, 0.001f, brownBand);
             CreateBand("Band4_Gold", body.transform, 0.003f, goldBand);
 
-            // Wire Leads (6 rows span = 15.24 mm along X = +/-0.00762m)
-            CreateResistorLead("LeadA", root.transform, -0.00762f, -0.005f, leadMat);
-            CreateResistorLead("LeadB", root.transform, 0.00762f, 0.005f, leadMat);
+            // Wire Leads
+            CreateResistorLead("LeadA", root.transform, -leadSpanHalf, -bodyLength * 0.9f, leadMat, scale);
+            CreateResistorLead("LeadB", root.transform, leadSpanHalf, bodyLength * 0.9f, leadMat, scale);
 
             // Collider for grabbing
             BoxCollider col = root.AddComponent<BoxCollider>();
-            col.center = new Vector3(0, 0.004f, 0);
-            col.size = new Vector3(0.020f, 0.015f, 0.012f);
+            col.center = new Vector3(0, 0.004f * scale, 0);
+            col.size = new Vector3(leadSpanHalf * 2.2f, 0.016f * scale, 0.014f * scale);
 
             CircuitPart part = root.AddComponent<CircuitPart>();
             part.componentId = "RESISTOR";
             part.isPolarized = false;
-            part.terminalOffsetA = new Vector3(-0.00762f, 0f, 0f);
-            part.terminalOffsetB = new Vector3(0.00762f, 0f, 0f);
+            part.terminalOffsetA = new Vector3(-leadSpanHalf, 0f, 0f);
+            part.terminalOffsetB = new Vector3(leadSpanHalf, 0f, 0f);
 
             return part;
         }
@@ -307,86 +312,87 @@ namespace BenchFlow.Editor
             Object.DestroyImmediate(band.GetComponent<Collider>());
         }
 
-        static void CreateResistorLead(string name, Transform parent, float xPos, float xInner, Material mat)
+        static void CreateResistorLead(string name, Transform parent, float xPos, float xInner, Material mat, float scale)
         {
-            // Horizontal lead segment
+            float len = Mathf.Abs(xPos - xInner);
             GameObject horiz = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             horiz.name = name + "_Horiz";
             horiz.transform.SetParent(parent, false);
-            float len = Mathf.Abs(xPos - xInner);
-            horiz.transform.localPosition = new Vector3((xPos + xInner) * 0.5f, 0.004f, 0);
-            horiz.transform.localScale = new Vector3(0.0006f, len * 0.5f, 0.0006f);
+            horiz.transform.localPosition = new Vector3((xPos + xInner) * 0.5f, 0.004f * scale, 0);
+            horiz.transform.localScale = new Vector3(0.0007f * scale, len * 0.5f, 0.0007f * scale);
             horiz.transform.localRotation = Quaternion.Euler(0, 0, 90);
             horiz.GetComponent<Renderer>().sharedMaterial = mat;
             Object.DestroyImmediate(horiz.GetComponent<Collider>());
 
-            // Vertical lead pin (inserts into breadboard hole)
             GameObject vert = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             vert.name = name + "_Pin";
             vert.transform.SetParent(parent, false);
-            vert.transform.localPosition = new Vector3(xPos, 0.001f, 0);
-            vert.transform.localScale = new Vector3(0.0006f, 0.0035f, 0.0006f);
+            vert.transform.localPosition = new Vector3(xPos, 0.001f * scale, 0);
+            vert.transform.localScale = new Vector3(0.0007f * scale, 0.004f * scale, 0.0007f * scale);
             vert.transform.localRotation = Quaternion.identity;
             vert.GetComponent<Renderer>().sharedMaterial = mat;
             Object.DestroyImmediate(vert.GetComponent<Collider>());
         }
 
-        static CircuitPart CreateDiscreteLed(string name, Vector3 pos, Material domeMat, Material leadMat)
+        static CircuitPart CreateDiscreteLed(string name, Vector3 pos, Material domeMat, Material leadMat, float scale)
         {
             GameObject root = new GameObject(name);
             root.transform.position = pos;
             root.transform.rotation = Quaternion.identity;
 
-            // 5mm Dome
+            float leadSpanHalf = 0.00254f * scale; // 2 rows span at scale
+            float domeRadius = 0.0055f * scale;
+            float domeHeight = 0.008f * scale;
+
+            // Dome
             GameObject dome = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             dome.name = "LED Dome";
             dome.transform.SetParent(root.transform, false);
-            dome.transform.localScale = new Vector3(0.005f, 0.0075f, 0.005f);
-            dome.transform.localPosition = new Vector3(0, 0.0075f, 0);
+            dome.transform.localScale = new Vector3(domeRadius, domeHeight, domeRadius);
+            dome.transform.localPosition = new Vector3(0, domeHeight, 0);
             dome.GetComponent<Renderer>().sharedMaterial = domeMat;
             Object.DestroyImmediate(dome.GetComponent<Collider>());
 
-            // Base rim with flat side indicating cathode
+            // Base rim
             GameObject rim = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             rim.name = "LED Rim";
             rim.transform.SetParent(root.transform, false);
-            rim.transform.localScale = new Vector3(0.0058f, 0.001f, 0.0058f);
-            rim.transform.localPosition = new Vector3(0, 0.004f, 0);
+            rim.transform.localScale = new Vector3(domeRadius * 1.15f, 0.001f * scale, domeRadius * 1.15f);
+            rim.transform.localPosition = new Vector3(0, 0.004f * scale, 0);
             rim.GetComponent<Renderer>().sharedMaterial = domeMat;
             Object.DestroyImmediate(rim.GetComponent<Collider>());
 
-            // Leads: 2 rows span = 5.08 mm = +/-0.00254m
-            // Long leg = Anode (terminal A at -0.00254f), Short leg = Cathode (terminal B at +0.00254f)
-            CreateLedLead("AnodeLead", root.transform, -0.00254f, 0.0045f, leadMat);
-            CreateLedLead("CathodeLead", root.transform, 0.00254f, 0.0035f, leadMat);
+            // Leads: Long leg Anode at -leadSpanHalf, Short leg Cathode at +leadSpanHalf
+            CreateLedLead("AnodeLead", root.transform, -leadSpanHalf, 0.0055f * scale, leadMat, scale);
+            CreateLedLead("CathodeLead", root.transform, leadSpanHalf, 0.0040f * scale, leadMat, scale);
 
             // Grab collider
             BoxCollider col = root.AddComponent<BoxCollider>();
-            col.center = new Vector3(0, 0.006f, 0);
-            col.size = new Vector3(0.015f, 0.018f, 0.012f);
+            col.center = new Vector3(0, 0.006f * scale, 0);
+            col.size = new Vector3(domeRadius * 2.2f, 0.020f * scale, domeRadius * 2.2f);
 
             CircuitPart part = root.AddComponent<CircuitPart>();
             part.componentId = "LED";
             part.isPolarized = true;
-            part.terminalOffsetA = new Vector3(-0.00254f, 0f, 0f); // Anode (long leg)
-            part.terminalOffsetB = new Vector3(0.00254f, 0f, 0f);  // Cathode (short leg)
+            part.terminalOffsetA = new Vector3(-leadSpanHalf, 0f, 0f); // Anode (long leg)
+            part.terminalOffsetB = new Vector3(leadSpanHalf, 0f, 0f);  // Cathode (short leg)
 
             return part;
         }
 
-        static void CreateLedLead(string name, Transform parent, float xPos, float length, Material mat)
+        static void CreateLedLead(string name, Transform parent, float xPos, float length, Material mat, float scale)
         {
             GameObject pin = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             pin.name = name;
             pin.transform.SetParent(parent, false);
-            pin.transform.localPosition = new Vector3(xPos, 0.004f - length * 0.5f, 0);
-            pin.transform.localScale = new Vector3(0.0006f, length * 0.5f, 0.0006f);
+            pin.transform.localPosition = new Vector3(xPos, 0.004f * scale - length * 0.5f, 0);
+            pin.transform.localScale = new Vector3(0.0007f * scale, length * 0.5f, 0.0007f * scale);
             pin.transform.localRotation = Quaternion.identity;
             pin.GetComponent<Renderer>().sharedMaterial = mat;
             Object.DestroyImmediate(pin.GetComponent<Collider>());
         }
 
-        static GameObject MakeTargetMarker(string name, Vector3 pos, Material mat, string label)
+        static GameObject MakeTargetMarker(string name, Vector3 pos, Material mat, string label, float scale)
         {
             GameObject markerRoot = new GameObject(name);
             markerRoot.transform.position = pos;
@@ -395,23 +401,25 @@ namespace BenchFlow.Editor
             GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             sphere.name = "GlowSphere";
             sphere.transform.SetParent(markerRoot.transform, false);
-            sphere.transform.localPosition = Vector3.up * 0.004f;
-            sphere.transform.localScale = Vector3.one * 0.005f;
+            sphere.transform.localPosition = Vector3.up * (0.004f * scale);
+            sphere.transform.localScale = Vector3.one * (0.006f * scale);
             sphere.GetComponent<Renderer>().sharedMaterial = mat;
             Object.DestroyImmediate(sphere.GetComponent<Collider>());
-            sphere.AddComponent<HologramPulse>();
+            HologramPulse pulse = sphere.AddComponent<HologramPulse>();
+            pulse.baseScale = 0.006f * scale;
+            pulse.pulseScaleRange = 0.002f * scale;
 
             // Floating Label Tag
             GameObject tag = Primitive("Label_" + label, PrimitiveType.Cube,
-                pos + Vector3.up * 0.016f + Vector3.back * 0.012f,
-                new Vector3(0.022f, 0.007f, 0.012f),
+                pos + Vector3.up * (0.022f * scale) + Vector3.back * (0.015f * scale),
+                new Vector3(0.026f * scale, 0.008f * scale, 0.014f * scale),
                 MakeMaterial("TagBack", new Color(0.02f, 0.12f, 0.18f, 0.95f)));
             tag.transform.SetParent(markerRoot.transform, true);
             Object.DestroyImmediate(tag.GetComponent<Collider>());
 
-            GameObject textObj = MakeText("LabelText_" + label, label, mat.color, 0.0018f,
-                pos + Vector3.up * 0.020f + Vector3.back * 0.012f, markerRoot.transform);
-            textObj.transform.rotation = Quaternion.Euler(45, 0, 0);
+            GameObject textObj = MakeText("LabelText_" + label, label, mat.color, 0.0022f * scale,
+                pos + Vector3.up * (0.026f * scale) + Vector3.back * (0.015f * scale), markerRoot.transform);
+            textObj.transform.rotation = Quaternion.Euler(40, 0, 0);
 
             return markerRoot;
         }
@@ -423,33 +431,33 @@ namespace BenchFlow.Editor
             root.transform.rotation = rot;
 
             // Glass backer
-            GameObject backer = Primitive("Card Backer", PrimitiveType.Cube, pos, new Vector3(0.26f, 0.16f, 0.005f), backerMat);
+            GameObject backer = Primitive("Card Backer", PrimitiveType.Cube, pos, new Vector3(0.32f, 0.19f, 0.006f), backerMat);
             backer.transform.SetParent(root.transform, false);
             backer.transform.localPosition = Vector3.zero;
             backer.transform.localRotation = Quaternion.identity;
             Object.DestroyImmediate(backer.GetComponent<Collider>());
 
             // Title
-            GameObject titleObj = MakeText("Step Title", "STEP 1 OF 4\nPLACE THE RED LED", Color.white, 0.0019f,
-                new Vector3(-0.118f, 0.058f, -0.004f), root.transform);
+            GameObject titleObj = MakeText("Step Title", "STEP 1 OF 4\nPLACE THE RED LED", Color.white, 0.0022f,
+                new Vector3(-0.145f, 0.068f, -0.004f), root.transform);
             tutorial.stepTitleText = titleObj.GetComponent<TextMesh>();
             tutorial.stepTitleText.fontStyle = FontStyle.Bold;
 
             // Instruction
             GameObject instrObj = MakeText("Step Instruction", "Long leg (Anode) → 14c\nShort leg (Cathode) → 16c",
-                new Color(0.85f, 0.90f, 0.95f), 0.0016f,
-                new Vector3(-0.118f, 0.015f, -0.004f), root.transform);
+                new Color(0.85f, 0.90f, 0.95f), 0.0018f,
+                new Vector3(-0.145f, 0.018f, -0.004f), root.transform);
             tutorial.stepInstructionText = instrObj.GetComponent<TextMesh>();
 
             // Status / Feedback
             GameObject statusObj = MakeText("Step Status", "Follow the glowing targets.",
-                new Color(0.2f, 0.85f, 1f), 0.0015f,
-                new Vector3(-0.118f, -0.045f, -0.004f), root.transform);
+                new Color(0.2f, 0.85f, 1f), 0.0016f,
+                new Vector3(-0.145f, -0.052f, -0.004f), root.transform);
             tutorial.statusText = statusObj.GetComponent<TextMesh>();
 
-            // Arduino Blink Code Panel (shown on right half or step 4)
-            GameObject codeObj = MakeText("Code Display", "", new Color(0.35f, 0.95f, 0.55f), 0.0013f,
-                new Vector3(0.015f, 0.045f, -0.004f), root.transform);
+            // Arduino Blink Code Panel (shown on right half of card)
+            GameObject codeObj = MakeText("Code Display", "", new Color(0.35f, 0.95f, 0.55f), 0.0014f,
+                new Vector3(0.018f, 0.055f, -0.004f), root.transform);
             tutorial.codeDisplayNode = codeObj.GetComponent<TextMesh>();
 
             return root;
@@ -461,26 +469,25 @@ namespace BenchFlow.Editor
             root.transform.position = pos;
 
             // Base
-            GameObject baseObj = Primitive("BtnBase", PrimitiveType.Cylinder, pos, new Vector3(0.024f, 0.004f, 0.024f),
+            GameObject baseObj = Primitive("BtnBase", PrimitiveType.Cylinder, pos, new Vector3(0.030f, 0.005f, 0.030f),
                 MakeMaterial("BtnBaseMat", new Color(0.1f, 0.12f, 0.15f)));
             baseObj.transform.SetParent(root.transform, true);
 
             // Push surface
-            GameObject cap = Primitive("BtnCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.003f, new Vector3(0.020f, 0.005f, 0.020f), btnMat);
+            GameObject cap = Primitive("BtnCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.004f, new Vector3(0.025f, 0.006f, 0.025f), btnMat);
             cap.transform.SetParent(root.transform, true);
 
             // Text
-            GameObject textObj = MakeText("BtnText", "RUN", Color.white, 0.0022f, pos + Vector3.up * 0.008f, root.transform);
+            GameObject textObj = MakeText("BtnText", "RUN", Color.white, 0.0028f, pos + Vector3.up * 0.010f, root.transform);
             textObj.transform.rotation = Quaternion.Euler(90, 0, 0);
             tutorial.runButtonText = textObj.GetComponent<TextMesh>();
             tutorial.runButtonText.anchor = TextAnchor.MiddleCenter;
 
             tutorial.runButtonObject = root;
 
-            // BoxCollider for VR ray / direct trigger hit
             BoxCollider col = root.AddComponent<BoxCollider>();
-            col.center = Vector3.up * 0.004f;
-            col.size = new Vector3(0.026f, 0.015f, 0.026f);
+            col.center = Vector3.up * 0.005f;
+            col.size = new Vector3(0.032f, 0.018f, 0.032f);
 
             return root;
         }
@@ -503,18 +510,18 @@ namespace BenchFlow.Editor
 
         static GameObject MakeAnchor(string name, Vector3 position, Material material)
         {
-            GameObject anchor = Primitive(name, PrimitiveType.Sphere, position, Vector3.one * 0.006f, material);
+            GameObject anchor = Primitive(name, PrimitiveType.Sphere, position, Vector3.one * 0.008f, material);
             return anchor;
         }
 
         static GameObject MakePinLabel(string label, Vector3 position, Material material)
         {
             GameObject tag = Primitive("Pin Label " + label, PrimitiveType.Cube, position,
-                new Vector3(0.028f, 0.008f, 0.014f),
+                new Vector3(0.032f, 0.009f, 0.016f),
                 MakeMaterial("PinLabelBack", new Color(0.02f, 0.12f, 0.18f, 0.95f)));
             Object.DestroyImmediate(tag.GetComponent<Collider>());
 
-            GameObject textObj = MakeText("Text " + label, label, material.color, 0.0022f, position + Vector3.up * 0.006f, null);
+            GameObject textObj = MakeText("Text " + label, label, material.color, 0.0026f, position + Vector3.up * 0.007f, null);
             textObj.transform.rotation = Quaternion.Euler(90, 0, 0);
             return tag;
         }
