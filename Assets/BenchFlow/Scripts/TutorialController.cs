@@ -34,6 +34,7 @@ namespace BenchFlow
         public TextMesh codeDisplayNode;
         public GameObject runButtonObject;
         public TextMesh runButtonText;
+        public GameObject resetButtonObject;
 
         [Header("Progress State")]
         [Range(0, 3)] public int currentStep = 0; // 0=LED, 1=Resistor, 2=Wires, 3=Run
@@ -273,6 +274,21 @@ namespace BenchFlow
             }
 
             UpdateStepUI();
+        }
+
+        /// <summary>Resets tutorial progress back to Step 1.</summary>
+        public void ResetTutorial()
+        {
+            currentStep = 0;
+            isProgramRunning = false;
+            latestFeedback = "Workbench reset. Start with Step 1: Place the red LED.";
+            UpdateStepUI();
+        }
+
+        public void OnResetButtonPressed()
+        {
+            if (workbench != null) workbench.ResetWorkbench();
+            else ResetTutorial();
         }
 
         void SetMarkerActive(GameObject obj, bool active)

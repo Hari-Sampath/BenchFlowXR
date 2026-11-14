@@ -146,6 +146,11 @@ namespace BenchFlow.Editor
             tutorial.blinkAnimator = blinkAnimator;
             workbenchState.tutorial = tutorial;
 
+            // Audio & Holographic Ghost Systems
+            SoundManager soundManager = stateObj.AddComponent<SoundManager>();
+            GhostPreview ghostPreview = stateObj.AddComponent<GhostPreview>();
+            ghostPreview.SetupGhosts(grid, BoardScale);
+
             // 8. Holographic Guided Markers & Labels (dynamically placed at scaled breadboard holes)
             // Step 1: LED (14c & 16c)
             GameObject marker14c = MakeTargetMarker("Marker 14c", grid.HolePosition(grid.GetHole("14c")), blueGlow, "14c", BoardScale);
@@ -173,10 +178,16 @@ namespace BenchFlow.Editor
                 Quaternion.Euler(18f, 0f, 0f),
                 panelMat, cyanGlow, tutorial);
 
-            // 10. Interactive 3D RUN Button
+            // 10. Interactive 3D RUN & RESET Buttons
             GameObject runBtn = BuildRunButton(
                 new Vector3(0.135f, DeskTopY + 0.018f, -0.130f),
                 runBtnMat, tutorial);
+
+            Material resetBtnMat = MakeMaterial("Reset Button Mat", new Color(0.25f, 0.28f, 0.32f));
+            GameObject resetBtn = BuildResetButton(
+                new Vector3(0.135f, DeskTopY + 0.018f, -0.075f),
+                resetBtnMat, tutorial);
+            tutorial.resetButtonObject = resetBtn;
 
             // 11. VR Rig & Player (Positioned at comfortable viewing distance from foreground breadboard)
             GameObject vrRigObj = new GameObject("[XR Rig] Player");
@@ -488,6 +499,32 @@ namespace BenchFlow.Editor
             BoxCollider col = root.AddComponent<BoxCollider>();
             col.center = Vector3.up * 0.005f;
             col.size = new Vector3(0.032f, 0.018f, 0.032f);
+
+            return root;
+        }
+
+        static GameObject BuildResetButton(Vector3 pos, Material btnMat, TutorialController tutorial)
+        {
+            GameObject root = new GameObject("3D RESET Button");
+            root.transform.position = pos;
+
+            // Base
+            GameObject baseObj = Primitive("ResetBase", PrimitiveType.Cylinder, pos, new Vector3(0.026f, 0.004f, 0.026f),
+                MakeMaterial("ResetBaseMat", new Color(0.12f, 0.14f, 0.16f)));
+            baseObj.transform.SetParent(root.transform, true);
+
+            // Push surface
+            GameObject cap = Primitive("ResetCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.003f, new Vector3(0.022f, 0.005f, 0.022f), btnMat);
+            cap.transform.SetParent(root.transform, true);
+
+            // Text
+            GameObject textObj = MakeText("ResetText", "RESET", new Color(0.85f, 0.88f, 0.92f), 0.0022f, pos + Vector3.up * 0.008f, root.transform);
+            textObj.transform.rotation = Quaternion.Euler(90, 0, 0);
+            textObj.GetComponent<TextMesh>().anchor = TextAnchor.MiddleCenter;
+
+            BoxCollider col = root.AddComponent<BoxCollider>();
+            col.center = Vector3.up * 0.004f;
+            col.size = new Vector3(0.028f, 0.016f, 0.028f);
 
             return root;
         }

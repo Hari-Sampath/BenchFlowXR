@@ -87,6 +87,14 @@ namespace BenchFlow
             {
                 if (tutorial != null) tutorial.OnRunButtonPressed();
             }
+            if (Input.GetKeyDown(KeyCode.Z))
+            {
+                if (workbench != null) workbench.ResetWorkbench();
+            }
+            if (Input.GetKeyDown(KeyCode.Delete) || Input.GetKeyDown(KeyCode.Backspace))
+            {
+                if (workbench != null) workbench.ClearWires();
+            }
         }
 
         void HandleLeftClick()
@@ -100,6 +108,13 @@ namespace BenchFlow
                 if (hit.collider.name.Contains("Run") || (tutorial != null && hit.collider.gameObject == tutorial.runButtonObject))
                 {
                     tutorial.OnRunButtonPressed();
+                    return;
+                }
+
+                // Check for RESET button
+                if (hit.collider.name.Contains("Reset") || (tutorial != null && hit.collider.gameObject == tutorial.resetButtonObject))
+                {
+                    if (workbench != null) workbench.ResetWorkbench();
                     return;
                 }
 

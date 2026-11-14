@@ -118,6 +118,16 @@ namespace BenchFlow
                 TriggerHaptic(0.2f, 0.05f);
             }
 
+            // Secondary button (B or Y) triggers reset
+            if (device.isValid && device.TryGetFeatureValue(CommonUsages.secondaryButton, out bool btnSecondary) && btnSecondary)
+            {
+                if (workbench != null)
+                {
+                    workbench.ResetWorkbench();
+                    TriggerHaptic(0.4f, 0.1f);
+                }
+            }
+
             // Raycasting & Interaction
             Ray ray = new Ray(transform.position, transform.forward);
             bool hasHit = Physics.Raycast(ray, out RaycastHit hit, rayDistance, interactionMask);
@@ -165,6 +175,14 @@ namespace BenchFlow
                     if (hit.collider.name.Contains("Run") || (tutorial != null && hit.collider.gameObject == tutorial.runButtonObject))
                     {
                         tutorial.OnRunButtonPressed();
+                        TriggerHaptic(0.5f, 0.1f);
+                        return;
+                    }
+
+                    // Check for RESET button
+                    if (hit.collider.name.Contains("Reset") || (tutorial != null && hit.collider.gameObject == tutorial.resetButtonObject))
+                    {
+                        tutorial.OnResetButtonPressed();
                         TriggerHaptic(0.5f, 0.1f);
                         return;
                     }

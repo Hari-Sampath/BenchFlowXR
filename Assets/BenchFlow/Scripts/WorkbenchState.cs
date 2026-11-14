@@ -6,6 +6,7 @@ namespace BenchFlow
     /// <summary>
     /// Owns the active circuit graph, placed parts, wires, and validation state.
     /// Acts as the interaction port for both VR controller/hand input and Desktop preview.
+    /// Supports resetting, magnetic ghost preview, and spatial audio feedback.
     /// </summary>
     public sealed class WorkbenchState : MonoBehaviour, IWorkbenchInteractionPort
     {
@@ -65,7 +66,13 @@ namespace BenchFlow
         public void BeginGrab(CircuitPart part, Pose handPose)
         {
             if (part == null) return;
-            // Detach from board during active grab
+
+            // Show holographic ghost target for held part
+            if (GhostPreview.Instance != null)
+            {
+                GhostPreview.Instance.ShowGhost(part.componentId, true);
+            }
+
             if (part.isSnapped)
             {
                 part.isSnapped = false;
@@ -83,12 +90,24 @@ namespace BenchFlow
         {
             if (part == null || breadboard == null) return;
 
+            if (GhostPreview.Instance != null)
+            {
+                GhostPreview.Instance.HideAll();
+            }
+
             // Attempt snapping
             bool snapped = part.TrySnapToBoard(breadboard, releasePosition, part.transform.rotation);
             if (!snapped)
             {
-                // If not snapped onto the board, return back to tray
                 part.ReturnHome();
+            }
+            else
+            {
+                // Play tactile snap click
+                if (SoundManager.Instance != null)
+                {
+                    SoundManager.Instance.PlaySnap(part.transform.position);
+                }
             }
 
             if (!placedParts.Contains(part)) placedParts.Add(part);
@@ -107,7 +126,6 @@ namespace BenchFlow
 
         public WireRenderer ConnectWireVisual(string terminalA, string terminalB, Vector3 startPos, Vector3 endPos, Color color)
         {
-            // Avoid duplicate wires
             foreach (var w in activeWires)
             {
                 if ((w.from == terminalA && w.to == terminalB) || (w.from == terminalB && w.to == terminalA))
@@ -121,6 +139,11 @@ namespace BenchFlow
 
             activeWires.Add((terminalA, terminalB, wireComp));
             if (blinkAnimator != null) blinkAnimator.RegisterWire(wireComp);
+
+            if (SoundManager.Instance != null)
+            {
+                SoundManager.Instance.PlayWire(endPos != Vector3.zero ? endPos : transform.position);
+            }
 
             RebuildCircuit();
 
@@ -152,21 +175,42 @@ namespace BenchFlow
             RebuildCircuit();
         }
 
+        /// <summary>Resets the entire workbench to fresh lesson state.</summary>
+        public void ResetWorkbench()
+        {
+            if (SoundManager.Instance != null)
+            {
+                SoundManager.Instance.PlayButton(transform.position);
+            }
+
+            if (blinkAnimator != null)
+            {
+                blinkAnimator.StopBlinking();
+            }
+
+            if (resistor != null) resistor.ReturnHome();
+            if (led != null) led.ReturnHome();
+
+            ClearWires();
+
+            if (tutorial != null)
+            {
+                tutorial.ResetTutorial();
+            }
+        }
+
         public void RebuildCircuit()
         {
             Circuit.Clear();
 
-            // 1. Board nets
             if (breadboard != null)
             {
                 breadboard.ConnectBoardNets(Circuit);
             }
 
-            // 2. Arduino anchors
             Circuit.RegisterNode("UNO:D13");
             Circuit.RegisterNode("UNO:GND");
 
-            // 3. Components
             if (resistor != null && resistor.isSnapped && breadboard != null)
             {
                 resistor.AttachSnappedTerminals(breadboard, Circuit);
@@ -176,7 +220,6 @@ namespace BenchFlow
                 led.AttachSnappedTerminals(breadboard, Circuit);
             }
 
-            // 4. Wires
             foreach (var w in activeWires)
             {
                 Circuit.Connect(w.from, w.to);
@@ -186,7 +229,18 @@ namespace BenchFlow
         public CircuitCheck ValidateCircuit()
         {
             RebuildCircuit();
-            return CircuitValidator.Validate(Circuit, breadboard, resistor, led);
+            CircuitCheck check = CircuitValidator.Validate(Circuit, breadboard, resistor, led);
+            if (check.isValid)
+            {
+                if (SoundManager.Instance != null)
+                    SoundManager.Instance.PlaySuccess(breadboard != null ? breadboard.transform.position : transform.position);
+            }
+            else
+            {
+                if (SoundManager.Instance != null)
+                    SoundManager.Instance.PlayError(breadboard != null ? breadboard.transform.position : transform.position);
+            }
+            return check;
         }
     }
 }

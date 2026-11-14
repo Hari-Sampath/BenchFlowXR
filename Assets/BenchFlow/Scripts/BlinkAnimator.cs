@@ -84,6 +84,11 @@ namespace BenchFlow
                 if (high && unoLedLitMaterial != null) unoD13LedRenderer.sharedMaterial = unoLedLitMaterial;
                 else if (!high && unoLedOffMaterial != null) unoD13LedRenderer.sharedMaterial = unoLedOffMaterial;
             }
+
+            if (high && SoundManager.Instance != null)
+            {
+                SoundManager.Instance.PlayTick(transform.position);
+            }
         }
     }
 }

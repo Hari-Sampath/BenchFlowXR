@@ -4,8 +4,8 @@ using UnityEngine;
 namespace BenchFlow
 {
     /// <summary>
-    /// Renders a natural 3D curved jumper wire between two connection endpoints.
-    /// Can animate current flow pulses when the circuit is live.
+    /// Renders a natural 3D curved jumper wire with animated electric current pulses.
+    /// When live, luminous current orbs travel along the curve from anode to cathode / ground.
     /// </summary>
     public sealed class WireRenderer : MonoBehaviour
     {
@@ -17,9 +17,14 @@ namespace BenchFlow
         public float archHeight = 0.055f;
         public int pointCount = 20;
 
+        [Header("Current Flow Animation")]
+        public float currentSpeed = 1.6f;
+        public Color pulseColor = new Color(1f, 0.92f, 0.25f, 1f); // Glowing yellow electron pulse
+
         LineRenderer lineRenderer;
         bool isCurrentFlowing = false;
-        float currentPulseTime = 0f;
+        readonly List<Transform> pulseBeads = new List<Transform>();
+        const int PulseCount = 3;
 
         void Awake()
         {
@@ -31,7 +36,6 @@ namespace BenchFlow
             lineRenderer.endWidth = 0.0035f;
             lineRenderer.positionCount = pointCount;
 
-            // Simple unlit sprite or mobile diffuse material for high VR performance
             Shader shader = Shader.Find("Sprites/Default");
             if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
             if (shader == null) shader = Shader.Find("Unlit/Color");
@@ -40,6 +44,31 @@ namespace BenchFlow
             lineRenderer.material = mat;
             lineRenderer.startColor = wireColor;
             lineRenderer.endColor = wireColor;
+
+            CreateCurrentPulses();
+        }
+
+        void CreateCurrentPulses()
+        {
+            Shader pulseShader = Shader.Find("Sprites/Default");
+            if (pulseShader == null) pulseShader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (pulseShader == null) pulseShader = Shader.Find("Unlit/Color");
+
+            Material pulseMat = new Material(pulseShader) { color = pulseColor };
+            pulseMat.EnableKeyword("_EMISSION");
+            pulseMat.SetColor("_EmissionColor", pulseColor * 2.5f);
+
+            for (int i = 0; i < PulseCount; i++)
+            {
+                GameObject bead = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                bead.name = $"CurrentPulse_{i}";
+                bead.transform.SetParent(transform, true);
+                bead.transform.localScale = Vector3.one * 0.0065f;
+                Destroy(bead.GetComponent<Collider>());
+                bead.GetComponent<Renderer>().sharedMaterial = pulseMat;
+                bead.SetActive(false);
+                pulseBeads.Add(bead.transform);
+            }
         }
 
         public void Setup(string from, string to, Vector3 start, Vector3 end, Color color, float height = 0.055f)
@@ -64,6 +93,11 @@ namespace BenchFlow
         public void SetCurrentFlow(bool active)
         {
             isCurrentFlowing = active;
+            foreach (var b in pulseBeads)
+            {
+                if (b != null) b.gameObject.SetActive(active);
+            }
+
             if (!active && lineRenderer != null)
             {
                 lineRenderer.startColor = wireColor;
@@ -73,15 +107,25 @@ namespace BenchFlow
 
         void Update()
         {
-            if (isCurrentFlowing && lineRenderer != null)
+            if (!isCurrentFlowing) return;
+
+            // Animate pulses travelling from start to end along the Bezier curve
+            for (int i = 0; i < pulseBeads.Count; i++)
             {
-                currentPulseTime += Time.deltaTime * 4f;
-                float pulse = 0.7f + 0.3f * Mathf.Sin(currentPulseTime);
-                Color pulsed = wireColor * pulse;
-                pulsed.a = 1f;
-                lineRenderer.startColor = pulsed;
-                lineRenderer.endColor = pulsed;
+                Transform bead = pulseBeads[i];
+                if (bead == null) continue;
+
+                float offset = i / (float)pulseBeads.Count;
+                float t = Mathf.Repeat(Time.time * currentSpeed + offset, 1.0f);
+                bead.position = EvaluateBezier(t);
             }
+        }
+
+        public Vector3 EvaluateBezier(float t)
+        {
+            Vector3 mid = (startPosition + endPosition) * 0.5f + Vector3.up * archHeight;
+            // Quadratic Bezier: (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
+            return (1f - t) * (1f - t) * startPosition + 2f * (1f - t) * t * mid + t * t * endPosition;
         }
 
         public void UpdateCurve()
@@ -89,18 +133,11 @@ namespace BenchFlow
             if (lineRenderer == null) return;
             lineRenderer.positionCount = pointCount;
 
-            // Quadratic / cubic Bezier arc
-            Vector3 mid = (startPosition + endPosition) * 0.5f;
-            mid.y += archHeight;
-
             for (int i = 0; i < pointCount; i++)
             {
                 float t = i / (float)(pointCount - 1);
-                // Quadratic bezier: (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
-                Vector3 p = (1f - t) * (1f - t) * startPosition + 2f * (1f - t) * t * mid + t * t * endPosition;
-                lineRenderer.SetPosition(i, p);
+                lineRenderer.SetPosition(i, EvaluateBezier(t));
             }
         }
     }
 }
-

@@ -45,11 +45,24 @@ BenchFlow XR guides learners through building and verifying electronic circuits 
     - Reversed LED polarity (helpful message instructing how to orient anode and cathode).
     - Missing wires or bridged rows.
 
-- **Live Arduino Blink Simulation:**
+- **Live Arduino Blink Simulation & Animated Current:**
   - Displays Arduino C++ sketch on the floating instruction card.
   - When verified, status turns to `RUNNING`.
   - Breadboard Red LED and Arduino D13 indicator blink synchronously at 1 Hz (500 ms ON / 500 ms OFF).
-  - Wires pulse with animated current flow.
+  - Luminous current pulses travel along the jumper wires from Pin 13 into the LED and to GND.
+
+- **Procedural 3D Spatial Audio & Haptics:**
+  - Zero external sound asset dependencies (synthesized via PCM audio buffers in C#).
+  - Spatialized tactile clicks on lead snap, wire connection chimes, button clicks, error alerts, and blink ticks.
+  - Controller haptic vibration on grab, snap, and button press.
+
+- **Component Ghost Targets & Magnetic Snapping:**
+  - Holographic ghost silhouettes appear at target holes (`14c`/`16c` or `8d`/`14d`) while holding parts.
+  - Bringing parts within proximity magnetically seats them into the ghost silhouette.
+
+- **Reset & Undo Workbench Controls:**
+  - 3D `RESET` button on the bench returns components to the tray, clears wires, and resets the tutorial.
+  - Shortcuts: `Z` (Desktop Reset), `Backspace`/`Delete` (Clear Wires), Secondary button `B`/`Y` (VR Reset).
 
 ---
 
