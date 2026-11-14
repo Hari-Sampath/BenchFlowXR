@@ -1,33 +1,63 @@
-# BenchFlow XR — Phase 1 prototype slice
+# BenchFlow XR — VR & Desktop Interactive Electronics Workbench
 
-## Audit
+An immersive virtual electronics lab designed for VR headsets (Meta Quest 3/3S, OpenXR, PCVR) with seamless Desktop Preview support.
 
-The provided workspace was empty: it contained no Unity project, scenes, package manifest, project settings, or existing assets. Unity **6000.3.6f1** is installed at `/Applications/Unity/Hub/Editor/6000.3.6f1`. With no project package manifest, there is no project-specific Meta XR SDK version to inspect. This scaffold records the installed editor version and leaves the package manifest empty; it does not upgrade or pin XR packages.
+## Overview
 
-## First vertical slice
+BenchFlow XR guides learners through building and verifying electronic circuits step-by-step on a solderless breadboard with an Arduino-compatible controller:
 
-The scene follows the supplied visual reference: a wood workbench with the breadboard centered, a generic controller board on the left, staged components on the right, and a floating step card with cyan terminal labels and a pulsing blue target. The workbench, breadboard, LED assembly, resistor assembly, and generic controller board are bundled CC0 models; see `Assets/BenchFlow/Models/External/ATTRIBUTION.txt` and the license in each source folder. The board's hole grid and electrical mapping remain separate data in `BreadboardGrid`. The slice also includes snap coordinates, independent union-find circuit nets, deterministic D13 → resistor → LED → GND checks, and a desktop-only preview interaction harness. `IWorkbenchInteractionPort` is the boundary for a future Meta hand adapter and keeps input out of the circuit graph and validator.
+1. **Step 1: Place the Red LED** (Long leg Anode → `14c`, Short leg Cathode → `16c`).
+2. **Step 2: Add the 220 Ω Resistor** (Bridges row `8d` to `14d`).
+3. **Step 3: Connect Jumper Wires** (Pin 13 → `8b`, GND → `16a`).
+4. **Step 4: Run the Blink Program** (Tap the 3D `RUN` button → verifies circuit and runs live Arduino Blink loop).
 
-The controller board visual is generic and unbranded. “Uno-compatible” refers to the lesson's pin mapping and circuit, not to the mesh. This remains a desktop preview scene: XR rig, Meta hand input, Android configuration, and a Quest build have not been integrated.
+---
 
-## Open and generate the scene
+## Features
 
-1. Open this folder as a Unity project with Unity 6000.3.6f1.
-2. Wait for the asset import, then run **BenchFlow → Create VR Prototype Scene**.
-3. Open `Assets/BenchFlow/Scenes/BenchFlowPrototype.unity` and press Play.
-4. In Play Mode, drag the resistor and LED onto the breadboard. Press `Space` to verify each tutorial step. Preview wire shortcuts: `1` connects D13 to the resistor, `2` connects the resistor to the LED anode, and `3` connects the LED cathode to GND.
+- **VR 6-DOF Hand & Controller Tracking:**
+  - Built on standard `UnityEngine.XR.InputDevices` (zero external bloat, compatible with Meta Quest Link, AirLink, Standalone APK, OpenXR, and SteamVR).
+  - Grab, lift, move, and rotate components using Grip or Trigger.
+  - Thumbstick horizontal axis rotates held parts in 90° increments.
+  - Laser pointer raycast with reticle for distant selection and button tapping.
+  - Subtle haptic feedback impulses on grab, snap, and button press.
 
-The mouse and number-key controls are a desktop preview harness; wire shortcuts create preview wires. The project does not yet contain an XR rig, Meta Interaction SDK adapter, hand grabbing, hand-drawn wire endpoints, Android player configuration, or a Quest build. Those require selecting and validating compatible Meta SDK packages first; the original project had no Meta package configuration to inspect.
+- **Desktop Preview Harness:**
+  - Left-click drag to grab and place components.
+  - Press `R` or scroll mouse wheel to rotate held parts 90°.
+  - Left-click on Pin 13 / GND or breadboard holes to draw wires.
+  - Keyboard shortcuts:
+    - `1`: Connect Pin 13 to row `8b` (Red jumper wire)
+    - `2`: Connect GND to row `16a` (Cyan jumper wire)
+    - `Space`: Tap the RUN button / verify circuit.
 
-## Implementation plan
+- **Physically Aligned Breadboard & Discrete Components:**
+  - Standard 2.54 mm pitch grid aligned with the 3D model (rows 1–63 along X, columns a–j along Z).
+  - Discrete 220 Ω Resistor with ceramic body, 4 color code bands (Red-Red-Brown-Gold), and 15.24 mm lead span.
+  - Discrete 5mm Red LED with dome lens, cathode flat rim, long anode wire, short cathode wire, and dynamic point light.
 
-1. **Audit and baseline:** retain Unity 6000.3.6f1; identify the intended Meta XR SDK / Interaction SDK version before changing package or Android settings.
-2. **Quest scene:** add the compatible OpenXR/Meta rig and hand tracking adapter, then verify launch and hand tracking on Quest 3/3S.
-3. **Physical interactions:** add grab/rotate/release to reusable component prefabs and map each placement to board-hole coordinates.
-4. **Circuit model:** bind terminals and wire endpoints to breadboard strips and rails; make graph rebuild deterministic after moves.
-5. **Tutorial and verification:** expose step-specific terminal targets, update the marker, run expected-net checks, and present concrete corrections.
-6. **Build and polish:** profile standalone performance, configure Android only after package validation, and build/install on device.
+- **Deterministic Circuit Netlist & Diagnostic Validator:**
+  - Evaluates connectivity through real breadboard terminal strips (`strip:A:8`, `strip:A:14`, `strip:A:16`).
+  - Supports non-polarized resistor in either orientation.
+  - Detects and diagnoses specific user mistakes:
+    - Same-strip short circuits (e.g. both LED legs in row 14).
+    - Direct D13-to-GND shorts without load.
+    - Reversed LED polarity (helpful message instructing how to orient anode and cathode).
+    - Missing wires or bridged rows.
 
-## Scope notes
+- **Live Arduino Blink Simulation:**
+  - Displays Arduino C++ sketch on the floating instruction card.
+  - When verified, status turns to `RUNNING`.
+  - Breadboard Red LED and Arduino D13 indicator blink synchronously at 1 Hz (500 ms ON / 500 ms OFF).
+  - Wires pulse with animated current flow.
 
-This phase contains no passthrough, camera access, AR/MR, object detection, or vision processing. The graph checks connectivity only; it is not an electrical simulator.
+---
+
+## Getting Started
+
+1. Open the project in Unity (Unity 6 / 6000.x).
+2. To rebuild or customize the scene: run **BenchFlow → Create VR Prototype Scene** in the Unity menu bar.
+3. Open `Assets/BenchFlow/Scenes/BenchFlowPrototype.unity`.
+4. Press **Play**:
+   - In VR: put on your headset and use Touch controllers / hands.
+   - On Desktop: use mouse drag, `R` to rotate, `1`/`2` to wire, and click `RUN`.

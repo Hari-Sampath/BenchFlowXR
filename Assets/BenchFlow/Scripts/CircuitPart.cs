@@ -1,53 +1,124 @@
+using System;
 using UnityEngine;
 
 namespace BenchFlow
 {
-    [CreateAssetMenu(menuName = "BenchFlow/Component Definition")]
-    public sealed class ComponentDefinition : ScriptableObject
-    {
-        public string componentId;
-        public int terminalCount = 2;
-        public Color displayColor = Color.white;
-    }
-
-    /// <summary>Electrical identity and snap state for a visual prefab.</summary>
+    /// <summary>
+    /// Represents a 2-terminal physical circuit component (Resistor, LED, etc.)
+    /// that can be picked up, rotated, and snapped onto the breadboard.
+    /// </summary>
     public sealed class CircuitPart : MonoBehaviour
     {
-        public string componentId;
-        public string[] terminalNodes = new string[2];
-        public HoleAddress snappedHole;
-        public HoleAddress firstTerminalHole;
-        public HoleAddress secondTerminalHole;
-        public Vector3 terminalOffsetA = new Vector3(-0.06f, 0f, 0f);
-        public Vector3 terminalOffsetB = new Vector3(0.06f, 0f, 0f);
-        public bool isSnapped;
+        [Header("Electrical Identity")]
+        public string componentId = "RESISTOR";
+        public bool isPolarized = false; // true for LED (terminal 0 = Anode, terminal 1 = Cathode)
 
-        public void SnapTo(BreadboardGrid board, Vector3 target)
+        [Header("Physical Leads")]
+        [Tooltip("Local offset for Terminal A (Anode for LED)")]
+        public Vector3 terminalOffsetA = new Vector3(-0.00762f, 0f, 0f);
+        [Tooltip("Local offset for Terminal B (Cathode for LED)")]
+        public Vector3 terminalOffsetB = new Vector3(0.00762f, 0f, 0f);
+
+        [Header("Runtime Snap State")]
+        public bool isSnapped = false;
+        public HoleAddress terminalHoleA;
+        public HoleAddress terminalHoleB;
+        public string electricalNodeA = "";
+        public string electricalNodeB = "";
+
+        [Header("Visual Feedback")]
+        public Renderer[] partRenderers;
+        public Color hoverColor = new Color(0.2f, 0.8f, 1f, 1f);
+
+        // Saved home transform on parts tray
+        [HideInInspector] public Vector3 homePosition;
+        [HideInInspector] public Quaternion homeRotation;
+
+        void Awake()
+        {
+            if (partRenderers == null || partRenderers.Length == 0)
+                partRenderers = GetComponentsInChildren<Renderer>();
+
+            homePosition = transform.position;
+            homeRotation = transform.rotation;
+        }
+
+        public Vector3 WorldLeadPositionA => transform.TransformPoint(terminalOffsetA);
+        public Vector3 WorldLeadPositionB => transform.TransformPoint(terminalOffsetB);
+
+        /// <summary>Returns true if both legs are in the same electrical strip (shorted!).</summary>
+        public bool IsShortedSameStrip(BreadboardGrid board)
+        {
+            if (!isSnapped || board == null) return false;
+            return board.ElectricalNode(terminalHoleA) == board.ElectricalNode(terminalHoleB);
+        }
+
+        /// <summary>Tests snapping onto the breadboard from a release or drag position.</summary>
+        public bool TrySnapToBoard(BreadboardGrid board, Vector3 targetPosition, Quaternion targetRotation)
         {
             isSnapped = false;
-            if (board.TrySnap(target, out snappedHole, out Vector3 point))
+            if (board == null) return false;
+
+            // Apply candidate transform
+            transform.SetPositionAndRotation(targetPosition, targetRotation);
+
+            // Test snap for both leads
+            Vector3 leadA = WorldLeadPositionA;
+            Vector3 leadB = WorldLeadPositionB;
+
+            bool snapA = board.TrySnap(leadA, out HoleAddress holeA, out Vector3 snappedPosA);
+            bool snapB = board.TrySnap(leadB, out HoleAddress holeB, out Vector3 snappedPosB);
+
+            if (snapA && snapB)
             {
-                transform.position = point;
-                board.TrySnap(transform.TransformPoint(terminalOffsetA), out firstTerminalHole, out _);
-                board.TrySnap(transform.TransformPoint(terminalOffsetB), out secondTerminalHole, out _);
+                // Align component position to the midpoint of the two snapped holes
+                Vector3 center = (snappedPosA + snappedPosB) * 0.5f;
+                // Keep the part resting on the breadboard surface
+                transform.position = center - (terminalOffsetA + terminalOffsetB) * 0.5f;
+
+                terminalHoleA = holeA;
+                terminalHoleB = holeB;
+                electricalNodeA = board.ElectricalNode(holeA);
+                electricalNodeB = board.ElectricalNode(holeB);
                 isSnapped = true;
+                return true;
             }
+
+            return false;
         }
 
-        public string Terminal(int index) => terminalNodes[index];
-
-        public void AttachTerminalsToHole(BreadboardGrid board, CircuitGraph graph, HoleAddress first, HoleAddress second)
+        /// <summary>Rotates the component by 90 degrees around its local Y axis.</summary>
+        public void Rotate90()
         {
-            if (terminalNodes == null || terminalNodes.Length < 2) terminalNodes = new string[2];
-            terminalNodes[0] = componentId == "LED" ? "LED:ANODE" : componentId + ":A";
-            terminalNodes[1] = componentId == "LED" ? "LED:CATHODE" : componentId + ":B";
-            graph.Connect(terminalNodes[0], board.ElectricalNode(first));
-            graph.Connect(terminalNodes[1], board.ElectricalNode(second));
+            transform.Rotate(0f, 90f, 0f, Space.Self);
         }
 
+        /// <summary>Returns to home tray position if released in invalid space.</summary>
+        public void ReturnHome()
+        {
+            isSnapped = false;
+            terminalHoleA = default;
+            terminalHoleB = default;
+            electricalNodeA = "";
+            electricalNodeB = "";
+            transform.SetPositionAndRotation(homePosition, homeRotation);
+        }
+
+        /// <summary>Attaches terminals to the circuit graph.</summary>
         public void AttachSnappedTerminals(BreadboardGrid board, CircuitGraph graph)
         {
-            AttachTerminalsToHole(board, graph, firstTerminalHole, secondTerminalHole);
+            if (!isSnapped || board == null || graph == null) return;
+
+            string idA = isPolarized ? $"{componentId}:ANODE" : $"{componentId}:A";
+            string idB = isPolarized ? $"{componentId}:CATHODE" : $"{componentId}:B";
+
+            electricalNodeA = board.ElectricalNode(terminalHoleA);
+            electricalNodeB = board.ElectricalNode(terminalHoleB);
+
+            graph.RegisterNode(idA);
+            graph.RegisterNode(idB);
+            graph.Connect(idA, electricalNodeA);
+            graph.Connect(idB, electricalNodeB);
         }
     }
 }

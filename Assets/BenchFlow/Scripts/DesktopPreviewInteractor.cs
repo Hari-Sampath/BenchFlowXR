@@ -3,7 +3,11 @@ using UnityEngine;
 
 namespace BenchFlow
 {
-    /// <summary>Editor-only mouse/keyboard harness for testing circuit state before the Quest adapter.</summary>
+    /// <summary>
+    /// Complete desktop mouse and keyboard interaction harness.
+    /// Allows full testing of grab, rotate, placement, snapping, wires, and verification
+    /// directly in the Unity Editor or non-VR standalone mode.
+    /// </summary>
     public sealed class DesktopPreviewInteractor : MonoBehaviour
     {
         public Camera previewCamera;
@@ -14,102 +18,150 @@ namespace BenchFlow
         public CircuitPart led;
         public Transform unoD13;
         public Transform unoGnd;
-        public string status = "Drag a part • Space checks the step";
 
         CircuitPart heldPart;
-        readonly List<LineRenderer> wireLines = new List<LineRenderer>();
+
+        void Awake()
+        {
+            if (previewCamera == null) previewCamera = Camera.main;
+            if (breadboard == null) breadboard = FindAnyObjectByType<BreadboardGrid>();
+            if (workbench == null) workbench = FindAnyObjectByType<WorkbenchState>();
+            if (tutorial == null) tutorial = FindAnyObjectByType<TutorialController>();
+
+            if (resistor == null || led == null)
+            {
+                CircuitPart[] allParts = FindObjectsByType<CircuitPart>();
+                foreach (var p in allParts)
+                {
+                    if (p.componentId == "RESISTOR" && resistor == null) resistor = p;
+                    else if (p.componentId == "LED" && led == null) led = p;
+                }
+            }
+
+            if (unoD13 == null)
+            {
+                GameObject p13 = GameObject.Find("UNO-compatible digital pin 13") ?? GameObject.Find("UNO Digital Pin 13");
+                if (p13 != null) unoD13 = p13.transform;
+            }
+            if (unoGnd == null)
+            {
+                GameObject pgnd = GameObject.Find("UNO-compatible GND") ?? GameObject.Find("UNO GND");
+                if (pgnd != null) unoGnd = pgnd.transform;
+            }
+        }
 
         void Update()
         {
-#if UNITY_EDITOR
-            if (Input.GetMouseButtonDown(0)) BeginMouseGrab();
+            // Mouse Grab & Drag
+            if (Input.GetMouseButtonDown(0))
+            {
+                HandleLeftClick();
+            }
+
             if (heldPart != null)
             {
                 MoveHeldPart();
-                if (Input.GetMouseButtonUp(0)) EndMouseGrab();
+
+                // Rotate with R key or ScrollWheel
+                if (Input.GetKeyDown(KeyCode.R) || Mathf.Abs(Input.mouseScrollDelta.y) > 0.4f)
+                {
+                    heldPart.Rotate90();
+                }
+
+                if (Input.GetMouseButtonUp(0))
+                {
+                    EndMouseGrab();
+                }
             }
 
+            // Keyboard Shortcuts for quick wiring & testing
+            if (Input.GetKeyDown(KeyCode.Alpha1))
+            {
+                ConnectWireD13To8b();
+            }
+            if (Input.GetKeyDown(KeyCode.Alpha2))
+            {
+                ConnectWireGndTo16a();
+            }
             if (Input.GetKeyDown(KeyCode.Space))
             {
-                CircuitCheck result = tutorial.VerifyStep();
-                SetStatus(result.message);
+                if (tutorial != null) tutorial.OnRunButtonPressed();
             }
-            if (Input.GetKeyDown(KeyCode.Alpha1)) Connect("UNO:D13", "RESISTOR:A", Color.red);
-            if (Input.GetKeyDown(KeyCode.Alpha2)) Connect("RESISTOR:B", "LED:ANODE", new Color(1f, 0.72f, 0.12f));
-            if (Input.GetKeyDown(KeyCode.Alpha3)) Connect("LED:CATHODE", "UNO:GND", Color.black);
-#endif
         }
 
-        void BeginMouseGrab()
+        void HandleLeftClick()
         {
-            if (previewCamera == null || !Physics.Raycast(previewCamera.ScreenPointToRay(Input.mousePosition), out RaycastHit hit, 10f)) return;
-            heldPart = hit.collider.GetComponentInParent<CircuitPart>();
-            if (heldPart != null) workbench.BeginGrab(heldPart, new Pose(heldPart.transform.position, heldPart.transform.rotation));
+            if (previewCamera == null) return;
+            Ray ray = previewCamera.ScreenPointToRay(Input.mousePosition);
+
+            if (Physics.Raycast(ray, out RaycastHit hit, 10f))
+            {
+                // 1. Check for RUN button
+                if (hit.collider.name.Contains("Run") || (tutorial != null && hit.collider.gameObject == tutorial.runButtonObject))
+                {
+                    tutorial.OnRunButtonPressed();
+                    return;
+                }
+
+                // 2. Check for Pin 13 / GND
+                if (hit.collider.name.Contains("13") || hit.collider.transform == unoD13)
+                {
+                    ConnectWireD13To8b();
+                    return;
+                }
+                if (hit.collider.name.Contains("GND") || hit.collider.name.Contains("gnd") || hit.collider.transform == unoGnd)
+                {
+                    ConnectWireGndTo16a();
+                    return;
+                }
+
+                // 3. Check for Circuit Part grab
+                CircuitPart part = hit.collider.GetComponentInParent<CircuitPart>();
+                if (part != null)
+                {
+                    heldPart = part;
+                    workbench.BeginGrab(heldPart, new Pose(heldPart.transform.position, heldPart.transform.rotation));
+                }
+            }
         }
 
         void MoveHeldPart()
         {
-            if (previewCamera == null || breadboard == null) return;
+            if (previewCamera == null || breadboard == null || heldPart == null) return;
             Ray ray = previewCamera.ScreenPointToRay(Input.mousePosition);
-            Plane boardPlane = new Plane(Vector3.up, breadboard.transform.position + Vector3.up * 0.025f);
+
+            // Raycast against breadboard surface plane
+            float tableY = breadboard.transform.position.y + breadboard.surfaceY;
+            Plane boardPlane = new Plane(Vector3.up, new Vector3(0f, tableY, 0f));
+
             if (boardPlane.Raycast(ray, out float distance))
             {
                 Vector3 point = ray.GetPoint(distance);
-                Vector3 posePosition = new Vector3(point.x, breadboard.HolePosition(new HoleAddress(0, 0, BreadboardSide.Left, BreadboardRail.None)).y, point.z);
-                workbench.UpdateGrab(heldPart, new Pose(posePosition, heldPart.transform.rotation));
+                workbench.UpdateGrab(heldPart, new Pose(point, heldPart.transform.rotation));
             }
         }
 
         void EndMouseGrab()
         {
+            if (heldPart == null) return;
             workbench.EndGrab(heldPart, heldPart.transform.position);
-            SetStatus(heldPart.isSnapped ? heldPart.componentId + " snapped to " + heldPart.firstTerminalHole : "Release over the breadboard to snap the part.");
             heldPart = null;
         }
 
-        void Connect(string a, string b, Color color)
+        public void ConnectWireD13To8b()
         {
-            if (workbench == null || resistor == null || led == null) return;
-            workbench.ConnectWire(a, b);
-            DrawWire(a, b, color);
-            SetStatus("Preview wire added: " + a + " ↔ " + b);
+            if (workbench == null || breadboard == null) return;
+            Vector3 start = unoD13 != null ? unoD13.position : new Vector3(-0.102f, 0.523f, -0.005f);
+            Vector3 end = breadboard.HolePosition(breadboard.GetHole("8b"));
+            workbench.ConnectWireVisual("UNO:D13", "strip:A:8", start, end, Color.red);
         }
 
-        void SetStatus(string message)
+        public void ConnectWireGndTo16a()
         {
-            status = message;
-            if (tutorial != null) tutorial.previewStatus = message;
+            if (workbench == null || breadboard == null) return;
+            Vector3 start = unoGnd != null ? unoGnd.position : new Vector3(-0.102f, 0.523f, 0.025f);
+            Vector3 end = breadboard.HolePosition(breadboard.GetHole("16a"));
+            workbench.ConnectWireVisual("strip:A:16", "UNO:GND", end, start, new Color(0.1f, 0.85f, 1f));
         }
-
-        void DrawWire(string a, string b, Color color)
-        {
-            Vector3 start = TerminalPosition(a);
-            Vector3 end = TerminalPosition(b);
-            GameObject wire = new GameObject("Preview Wire " + (wireLines.Count + 1));
-            LineRenderer line = wire.AddComponent<LineRenderer>();
-            line.positionCount = 3;
-            line.useWorldSpace = true;
-            line.startWidth = line.endWidth = 0.004f;
-            line.material = new Material(Shader.Find("Sprites/Default")) { color = color };
-            line.startColor = line.endColor = color;
-            line.SetPosition(0, start);
-            line.SetPosition(1, (start + end) * 0.5f + Vector3.up * 0.08f);
-            line.SetPosition(2, end);
-            wireLines.Add(line);
-        }
-
-        Vector3 TerminalPosition(string node)
-        {
-            switch (node)
-            {
-                case "UNO:D13": return unoD13.position;
-                case "UNO:GND": return unoGnd.position;
-                case "RESISTOR:A": return resistor.transform.TransformPoint(resistor.terminalOffsetA);
-                case "RESISTOR:B": return resistor.transform.TransformPoint(resistor.terminalOffsetB);
-                case "LED:ANODE": return led.transform.TransformPoint(led.terminalOffsetA);
-                default: return led.transform.TransformPoint(led.terminalOffsetB);
-            }
-        }
-
     }
 }
