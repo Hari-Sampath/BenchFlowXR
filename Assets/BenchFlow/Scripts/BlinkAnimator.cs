@@ -35,6 +35,11 @@ namespace BenchFlow
             if (wire != null && !wires.Contains(wire)) wires.Add(wire);
         }
 
+        public void UnregisterWire(WireRenderer wire)
+        {
+            if (wire != null) wires.Remove(wire);
+        }
+
         public void StartBlinking()
         {
             isRunning = true;

@@ -30,7 +30,7 @@ namespace BenchFlow
 
             if (resistor == null || led == null)
             {
-                CircuitPart[] allParts = FindObjectsByType<CircuitPart>();
+                CircuitPart[] allParts = FindObjectsByType<CircuitPart>(FindObjectsSortMode.None);
                 foreach (var p in allParts)
                 {
                     if (p.componentId == "RESISTOR" && resistor == null) resistor = p;
@@ -89,7 +89,13 @@ namespace BenchFlow
             }
             if (Input.GetKeyDown(KeyCode.Z))
             {
-                if (workbench != null) workbench.ResetWorkbench();
+                bool commandOrControl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) ||
+                                        Input.GetKey(KeyCode.LeftCommand) || Input.GetKey(KeyCode.RightCommand);
+                if (workbench != null)
+                {
+                    if (commandOrControl) workbench.UndoLastWire();
+                    else workbench.ResetWorkbench();
+                }
             }
             if (Input.GetKeyDown(KeyCode.Delete) || Input.GetKeyDown(KeyCode.Backspace))
             {
@@ -104,6 +110,15 @@ namespace BenchFlow
 
             if (Physics.Raycast(ray, out RaycastHit hit, 10f))
             {
+                if (tutorial != null && tutorial.currentStep == 2 && TrySelectWireEndpoint(hit))
+                    return;
+
+                if (hit.collider.name.Contains("Undo") || (tutorial != null && hit.collider.gameObject == tutorial.undoButtonObject))
+                {
+                    if (workbench != null) workbench.UndoLastWire();
+                    return;
+                }
+
                 // 1. Check for RUN button
                 if (hit.collider.name.Contains("Run") || (tutorial != null && hit.collider.gameObject == tutorial.runButtonObject))
                 {
@@ -140,13 +155,36 @@ namespace BenchFlow
             }
         }
 
+        bool TrySelectWireEndpoint(RaycastHit hit)
+        {
+            if (workbench == null || breadboard == null) return false;
+            string node = null;
+            Vector3 point = hit.point;
+            string colliderName = hit.collider.name;
+
+            if (colliderName.Contains("13") || hit.collider.transform == unoD13)
+                node = "UNO:D13";
+            else if (colliderName.Contains("GND") || colliderName.Contains("gnd") || hit.collider.transform == unoGnd)
+                node = "UNO:GND";
+            else if (hit.collider.GetComponentInParent<BreadboardGrid>() != null &&
+                     breadboard.TrySnap(hit.point, out HoleAddress hole, out Vector3 snapped))
+            {
+                node = breadboard.ElectricalNode(hole);
+                point = snapped;
+            }
+
+            if (node == null) return false;
+            workbench.SelectWireEndpoint(node, point);
+            return true;
+        }
+
         void MoveHeldPart()
         {
             if (previewCamera == null || breadboard == null || heldPart == null) return;
             Ray ray = previewCamera.ScreenPointToRay(Input.mousePosition);
 
             // Raycast against breadboard surface plane
-            float tableY = breadboard.transform.position.y + breadboard.surfaceY;
+            float tableY = breadboard.transform.position.y + breadboard.surfaceY * breadboard.transform.lossyScale.y;
             Plane boardPlane = new Plane(Vector3.up, new Vector3(0f, tableY, 0f));
 
             if (boardPlane.Raycast(ray, out float distance))

@@ -164,6 +164,16 @@ namespace BenchFlow
                 // Look for grab candidates
                 if ((triggerDown || gripDown) && hasHit)
                 {
+                    if (tutorial != null && tutorial.currentStep == 2 && TrySelectWireEndpoint(hit))
+                        return;
+
+                    if (hit.collider.name.Contains("Undo") || (tutorial != null && hit.collider.gameObject == tutorial.undoButtonObject))
+                    {
+                        workbench.UndoLastWire();
+                        TriggerHaptic(0.4f, 0.08f);
+                        return;
+                    }
+
                     CircuitPart part = hit.collider.GetComponentInParent<CircuitPart>();
                     if (part != null)
                     {
@@ -194,6 +204,28 @@ namespace BenchFlow
                     }
                 }
             }
+        }
+
+        bool TrySelectWireEndpoint(RaycastHit hit)
+        {
+            if (workbench == null || breadboard == null) return false;
+            string node = null;
+            Vector3 point = hit.point;
+            string colliderName = hit.collider.name;
+
+            if (colliderName.Contains("13")) node = "UNO:D13";
+            else if (colliderName.Contains("GND") || colliderName.Contains("gnd")) node = "UNO:GND";
+            else if (hit.collider.GetComponentInParent<BreadboardGrid>() != null &&
+                     breadboard.TrySnap(hit.point, out HoleAddress hole, out Vector3 snapped))
+            {
+                node = breadboard.ElectricalNode(hole);
+                point = snapped;
+            }
+
+            if (node == null) return false;
+            workbench.SelectWireEndpoint(node, point);
+            TriggerHaptic(0.4f, 0.06f);
+            return true;
         }
 
         void GrabPart(CircuitPart part)

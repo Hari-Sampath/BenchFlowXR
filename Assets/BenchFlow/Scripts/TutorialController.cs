@@ -35,6 +35,7 @@ namespace BenchFlow
         public GameObject runButtonObject;
         public TextMesh runButtonText;
         public GameObject resetButtonObject;
+        public GameObject undoButtonObject;
 
         [Header("Progress State")]
         [Range(0, 3)] public int currentStep = 0; // 0=LED, 1=Resistor, 2=Wires, 3=Run
@@ -67,7 +68,7 @@ namespace BenchFlow
 
             if (stepInstructionText == null)
             {
-                TextMesh[] texts = FindObjectsByType<TextMesh>();
+                TextMesh[] texts = FindObjectsByType<TextMesh>(FindObjectsSortMode.None);
                 foreach (var t in texts)
                 {
                     if (t.name.Contains("Instruction") || t.name.Contains("Step instruction"))
@@ -115,12 +116,13 @@ namespace BenchFlow
             {
                 if (led != null && led.isSnapped)
                 {
-                    // Check if placed in rows 14 and 16
-                    bool correctRows = (led.terminalHoleA.row == 14 && led.terminalHoleB.row == 16) ||
-                                       (led.terminalHoleA.row == 16 && led.terminalHoleB.row == 14);
-                    if (correctRows)
+                    bool anodeAt14c = led.terminalHoleA.row == 14 && led.terminalHoleA.column == 2 && led.terminalHoleA.side == BreadboardSide.SideA;
+                    bool cathodeAt16c = led.terminalHoleB.row == 16 && led.terminalHoleB.column == 2 && led.terminalHoleB.side == BreadboardSide.SideA;
+                    bool anodeAt16c = led.terminalHoleA.row == 16 && led.terminalHoleA.column == 2 && led.terminalHoleA.side == BreadboardSide.SideA;
+                    bool cathodeAt14c = led.terminalHoleB.row == 14 && led.terminalHoleB.column == 2 && led.terminalHoleB.side == BreadboardSide.SideA;
+                    if ((anodeAt14c && cathodeAt16c) || (anodeAt16c && cathodeAt14c))
                     {
-                        if (led.terminalHoleA.row == 14 && led.terminalHoleB.row == 16)
+                        if (anodeAt14c && cathodeAt16c)
                         {
                             latestFeedback = "LED placed correctly (Anode at 14c, Cathode at 16c).";
                             currentStep = 1;
@@ -132,7 +134,7 @@ namespace BenchFlow
                     }
                     else
                     {
-                        latestFeedback = $"LED placed in rows {led.terminalHoleA.row} and {led.terminalHoleB.row}. Target: 14c & 16c.";
+                        latestFeedback = "Move the two LED legs into holes 14c and 16c.";
                     }
                 }
             }
@@ -142,16 +144,18 @@ namespace BenchFlow
             {
                 if (res != null && res.isSnapped)
                 {
-                    bool correctRows = (res.terminalHoleA.row == 8 && res.terminalHoleB.row == 14) ||
-                                       (res.terminalHoleA.row == 14 && res.terminalHoleB.row == 8);
-                    if (correctRows)
+                    bool correct = (res.terminalHoleA.row == 8 && res.terminalHoleA.column == 3 && res.terminalHoleA.side == BreadboardSide.SideA &&
+                                    res.terminalHoleB.row == 14 && res.terminalHoleB.column == 3 && res.terminalHoleB.side == BreadboardSide.SideA) ||
+                                   (res.terminalHoleB.row == 8 && res.terminalHoleB.column == 3 && res.terminalHoleB.side == BreadboardSide.SideA &&
+                                    res.terminalHoleA.row == 14 && res.terminalHoleA.column == 3 && res.terminalHoleA.side == BreadboardSide.SideA);
+                    if (correct)
                     {
                         latestFeedback = "220 Ω resistor placed between rows 8 and 14.";
                         currentStep = 2;
                     }
                     else
                     {
-                        latestFeedback = $"Resistor placed in rows {res.terminalHoleA.row} and {res.terminalHoleB.row}. Target: 8d & 14d.";
+                        latestFeedback = "Place the resistor legs in holes 8d and 14d.";
                     }
                 }
             }
@@ -170,6 +174,14 @@ namespace BenchFlow
                 {
                     latestFeedback = "Wires connected: Pin 13 → 8b, GND → 16a.";
                     currentStep = 3;
+                }
+                else if (!d13Connected)
+                {
+                    latestFeedback = "Connect Arduino Pin 13 to the glowing 8b target.";
+                }
+                else
+                {
+                    latestFeedback = "Connect Arduino GND to the glowing 16a target.";
                 }
             }
         }
@@ -207,15 +219,15 @@ namespace BenchFlow
             {
                 case 0:
                     SetText(stepTitleText, "STEP 1 OF 4\nPLACE THE RED LED");
-                    SetText(stepInstructionText, "Long leg (Anode) → 14c\nShort leg (Cathode) → 16c\nFollow the glowing targets.");
+                    SetText(stepInstructionText, "Long leg → 14c\nShort leg → 16c\nMatch both blue targets.");
                     break;
                 case 1:
                     SetText(stepTitleText, "STEP 2 OF 4\nADD THE 220 Ω RESISTOR");
-                    SetText(stepInstructionText, "From 8d to 14d\nBridges power to the LED anode.");
+                    SetText(stepInstructionText, "Place one leg in each\nblue target: 8d and 14d.");
                     break;
                 case 2:
                     SetText(stepTitleText, "STEP 3 OF 4\nCONNECT TWO JUMPER WIRES");
-                    SetText(stepInstructionText, "Pin 13 → 8b (Red)\nArduino GND → 16a (Cyan)\nFollow the glowing paths.");
+                    SetText(stepInstructionText, "Connect Pin 13 to 8b\nConnect GND to 16a\nSelect each endpoint.");
                     break;
                 case 3:
                     if (isProgramRunning)
@@ -289,6 +301,11 @@ namespace BenchFlow
         {
             if (workbench != null) workbench.ResetWorkbench();
             else ResetTutorial();
+        }
+
+        public void OnUndoButtonPressed()
+        {
+            if (workbench != null) workbench.UndoLastWire();
         }
 
         void SetMarkerActive(GameObject obj, bool active)

@@ -36,7 +36,7 @@ namespace BenchFlow
 
             if (runtimeMaterial != null)
             {
-                float intensity = 1.2f + (sine + 1f) * 0.8f;
+                float intensity = 3.0f + (sine + 1f) * 2.5f;
                 Color emitted = glowColor * intensity;
                 runtimeMaterial.SetColor("_EmissionColor", emitted);
                 if (runtimeMaterial.HasProperty("_Color"))

@@ -1,0 +1,23 @@
+newmtl white
+Kd 1.000000 1.000000 1.000000
+Ka 0.2 0.2 0.2
+Ks 0.1 0.1 0.1
+Ns 24
+d 1.000000
+map_Kd textures/breadboard_0.png
+
+newmtl blue
+Kd 1.000000 1.000000 1.000000
+Ka 0.2 0.2 0.2
+Ks 0.1 0.1 0.1
+Ns 24
+d 1.000000
+map_Kd textures/breadboard_1.png
+
+newmtl red
+Kd 1.000000 1.000000 1.000000
+Ka 0.2 0.2 0.2
+Ks 0.1 0.1 0.1
+Ns 24
+d 1.000000
+map_Kd textures/breadboard_2.png

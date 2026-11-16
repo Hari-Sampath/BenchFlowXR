@@ -55,7 +55,7 @@ namespace BenchFlow
                 dome.transform.SetParent(ghostLed.transform, false);
                 dome.transform.localScale = new Vector3(0.0055f * scale, 0.008f * scale, 0.0055f * scale);
                 dome.transform.localPosition = new Vector3(0, 0.008f * scale, 0);
-                Destroy(dome.GetComponent<Collider>());
+                RemoveCollider(dome);
                 dome.GetComponent<Renderer>().sharedMaterial = ghostMaterial;
 
                 ghostLed.SetActive(false);
@@ -76,11 +76,19 @@ namespace BenchFlow
                 body.transform.localScale = new Vector3(0.0035f * scale, 0.006f * scale, 0.0035f * scale);
                 body.transform.localRotation = Quaternion.Euler(0, 0, 90);
                 body.transform.localPosition = new Vector3(0, 0.004f * scale, 0);
-                Destroy(body.GetComponent<Collider>());
+                RemoveCollider(body);
                 body.GetComponent<Renderer>().sharedMaterial = ghostMaterial;
 
                 ghostResistor.SetActive(false);
             }
+        }
+
+        static void RemoveCollider(GameObject target)
+        {
+            Collider collider = target.GetComponent<Collider>();
+            if (collider == null) return;
+            if (Application.isPlaying) Destroy(collider);
+            else DestroyImmediate(collider);
         }
 
         public void ShowGhost(string componentId, bool show)

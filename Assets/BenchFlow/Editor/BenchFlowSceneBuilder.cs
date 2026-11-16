@@ -13,8 +13,11 @@ namespace BenchFlow.Editor
     public static class BenchFlowSceneBuilder
     {
         const string Models = "Assets/BenchFlow/Models/External/";
+        const string UserModels = "Assets/BenchFlow/Models/UserProvided/";
         const float DeskTopY = 0.495f;
-        const float BoardScale = 1.65f; // Scaled up so breadboard is prominent, clear, and easily targetable
+        // Scale the complete work area together so grid coordinates, hole spacing,
+        // loose parts and target positions all remain in the same coordinate system.
+        const float BoardScale = 2.0f;
 
         [MenuItem("BenchFlow/Create VR Prototype Scene")]
         public static void CreatePrototypeScene()
@@ -34,7 +37,6 @@ namespace BenchFlow.Editor
             Material blueGlow = MakeMaterial("Tutorial Hologram Blue", new Color(0.10f, 0.70f, 1f), true);
             Material cyanGlow = MakeMaterial("Pin Label Cyan", new Color(0.30f, 0.90f, 1f), true);
             Material panelMat = MakeMaterial("Instruction Glass", new Color(0.02f, 0.05f, 0.08f, 0.94f));
-            Material trayMat = MakeMaterial("Parts Tray", new Color(0.05f, 0.07f, 0.09f));
             Material ceramicMat = MakeMaterial("Resistor Ceramic", new Color(0.85f, 0.74f, 0.58f));
             Material wireMetalMat = MakeMaterial("Metal Lead", new Color(0.75f, 0.77f, 0.80f));
             Material ledRedOff = MakeMaterial("LED Red Off", new Color(0.6f, 0.05f, 0.05f, 0.9f));
@@ -53,9 +55,9 @@ namespace BenchFlow.Editor
             grid.rowSpacing = 0.00254f;
             grid.centerGap = 0.00762f;
             grid.railOffset = 0.0215f;
-            grid.surfaceY = 0.0135f;
+            grid.surfaceY = 0.009f;
 
-            GameObject breadboardAsset = AssetDatabase.LoadAssetAtPath<GameObject>(Models + "Breadboard_OBJ/breadboard.obj");
+            GameObject breadboardAsset = AssetDatabase.LoadAssetAtPath<GameObject>(UserModels + "Breadboard/830-point-breadboard.obj");
             if (breadboardAsset != null)
             {
                 GameObject boardModel = (GameObject)PrefabUtility.InstantiatePrefab(breadboardAsset);
@@ -65,30 +67,38 @@ namespace BenchFlow.Editor
                 boardModel.transform.localRotation = Quaternion.identity;
                 boardModel.transform.localScale = Vector3.one;
             }
+            else Debug.LogError("Clean breadboard model is missing: " + UserModels + "Breadboard/830-point-breadboard.obj");
 
             BoxCollider gridCollider = breadboardObject.AddComponent<BoxCollider>();
-            gridCollider.center = new Vector3(0, 0.01f, 0);
-            gridCollider.size = new Vector3(0.165f, 0.025f, 0.055f);
+            gridCollider.center = new Vector3(0, 0.0045f, 0);
+            gridCollider.size = new Vector3(0.165f, 0.009f, 0.055f);
 
-            // 3. Arduino-Compatible Controller Board (at left of breadboard)
-            GameObject controller = PlaceModel("Controller Board (Generic, CC0)", Models + "CircuitBoard_OBJ/circuit-board.obj",
-                new Vector3(-0.21f, DeskTopY, -0.06f), Quaternion.Euler(0, 90, 0), Vector3.one * 1.35f);
+            // 3. User supplied Arduino Uno. Fit to its real 68 x 53 mm footprint.
+            const float unoScale = 1.20f;
+            Vector3 unoCenter = new Vector3(-0.245f, DeskTopY, -0.06f);
+            Vector2 unoFootprint = new Vector2(0.068f * unoScale, 0.053f * unoScale);
+            GameObject controller = PlaceFittedModel("Arduino Uno (user supplied)", UserModels + "ArduinoUno/source/Arduino Uno.fbx",
+                unoCenter, Quaternion.Euler(90f, 0f, 0f), unoFootprint);
             if (controller != null)
             {
-                controller.AddComponent<BoxCollider>().size = new Vector3(0.10f, 0.025f, 0.065f);
+                BoxCollider unoCollider = controller.AddComponent<BoxCollider>();
+                unoCollider.center = new Vector3(0, 0.005f, 0);
+                unoCollider.size = new Vector3(unoFootprint.x, 0.012f, unoFootprint.y);
             }
 
             // Arduino Pin Anchors
-            GameObject pin13 = MakeAnchor("UNO Digital Pin 13", new Vector3(-0.165f, DeskTopY + 0.028f, -0.075f), cyanGlow);
-            GameObject pinGnd = MakeAnchor("UNO GND", new Vector3(-0.165f, DeskTopY + 0.028f, -0.035f), cyanGlow);
-            MakePinLabel("13", pin13.transform.position + Vector3.up * 0.016f, cyanGlow);
-            MakePinLabel("GND", pinGnd.transform.position + Vector3.up * 0.016f, cyanGlow);
+            Vector3 pin13OffsetFromUno = new Vector3(0.031f, 0.010f, -0.019f) * unoScale;
+            Vector3 pinGndOffsetFromUno = new Vector3(0.031f, 0.010f, -0.014f) * unoScale;
+            GameObject pin13 = MakeAnchor("UNO Digital Pin 13", unoCenter + pin13OffsetFromUno, cyanGlow);
+            GameObject pinGnd = MakeAnchor("UNO GND", unoCenter + pinGndOffsetFromUno, cyanGlow);
+            MakePinLabel("13", pin13.transform.position + Vector3.up * 0.004f + Vector3.left * 0.012f, cyanGlow);
+            MakePinLabel("GND", pinGnd.transform.position + Vector3.up * 0.004f + Vector3.right * 0.012f, cyanGlow);
 
             // Arduino Built-in D13 LED Indicator
             GameObject unoLedObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
             unoLedObj.name = "Arduino D13 Built-in LED";
-            unoLedObj.transform.position = new Vector3(-0.185f, DeskTopY + 0.026f, -0.075f);
-            unoLedObj.transform.localScale = new Vector3(0.004f, 0.002f, 0.004f);
+            unoLedObj.transform.position = unoCenter + new Vector3(0.020f, 0.009f, -0.015f) * unoScale;
+            unoLedObj.transform.localScale = new Vector3(0.004f, 0.002f, 0.004f) * unoScale;
             Object.DestroyImmediate(unoLedObj.GetComponent<Collider>());
             Renderer unoLedRenderer = unoLedObj.GetComponent<Renderer>();
             Material unoLedOff = MakeMaterial("Uno LED Off", new Color(0.3f, 0.25f, 0.05f));
@@ -96,20 +106,16 @@ namespace BenchFlow.Editor
             unoLedRenderer.sharedMaterial = unoLedOff;
 
             // 4. Parts Tray (on the right)
-            GameObject tray = Primitive("Parts Tray", PrimitiveType.Cube,
-                new Vector3(0.22f, DeskTopY + 0.005f, -0.06f),
-                new Vector3(0.13f, 0.008f, 0.16f), trayMat);
-
             // 5. Discrete 220 Ω Resistor Component (proportioned to BoardScale)
             CircuitPart resistor = CreateDiscreteResistor(
                 "Resistor 220 Ohm",
-                new Vector3(0.22f, DeskTopY + 0.018f, -0.10f),
+                new Vector3(0.230f, DeskTopY + 0.008f, -0.105f),
                 ceramicMat, wireMetalMat, BoardScale);
 
             // 6. Discrete Red 5mm LED Component (proportioned to BoardScale)
             CircuitPart led = CreateDiscreteLed(
                 "Red LED",
-                new Vector3(0.22f, DeskTopY + 0.018f, -0.02f),
+                new Vector3(0.230f, DeskTopY + 0.008f, -0.015f),
                 ledRedOff, wireMetalMat, BoardScale);
 
             // Light for when the LED lights up
@@ -174,20 +180,25 @@ namespace BenchFlow.Editor
 
             // 9. Floating 3D Guided Card (tilted towards VR player)
             GameObject cardObj = BuildGuidedCard(
-                new Vector3(0.01f, DeskTopY + 0.28f, 0.12f),
+                new Vector3(0.01f, DeskTopY + 0.16f, 0.12f),
                 Quaternion.Euler(18f, 0f, 0f),
                 panelMat, cyanGlow, tutorial);
 
             // 10. Interactive 3D RUN & RESET Buttons
             GameObject runBtn = BuildRunButton(
-                new Vector3(0.135f, DeskTopY + 0.018f, -0.130f),
+                new Vector3(0.000f, DeskTopY + 0.006f, -0.195f),
                 runBtnMat, tutorial);
 
             Material resetBtnMat = MakeMaterial("Reset Button Mat", new Color(0.25f, 0.28f, 0.32f));
             GameObject resetBtn = BuildResetButton(
-                new Vector3(0.135f, DeskTopY + 0.018f, -0.075f),
+                new Vector3(0.050f, DeskTopY + 0.006f, -0.195f),
                 resetBtnMat, tutorial);
             tutorial.resetButtonObject = resetBtn;
+
+            GameObject undoBtn = BuildUndoButton(
+                new Vector3(-0.050f, DeskTopY + 0.006f, -0.195f),
+                MakeMaterial("Undo Button Mat", new Color(0.18f, 0.38f, 0.58f)), tutorial);
+            tutorial.undoButtonObject = undoBtn;
 
             // 11. VR Rig & Player (Positioned at comfortable viewing distance from foreground breadboard)
             GameObject vrRigObj = new GameObject("[XR Rig] Player");
@@ -200,7 +211,7 @@ namespace BenchFlow.Editor
             cameraObj.tag = "MainCamera";
             Camera cam = cameraObj.AddComponent<Camera>();
             cam.nearClipPlane = 0.05f;
-            cam.fieldOfView = 52f;
+            cam.fieldOfView = 62f;
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.05f, 0.07f, 0.09f);
             cameraObj.transform.localPosition = Vector3.zero;
@@ -270,8 +281,8 @@ namespace BenchFlow.Editor
             root.transform.rotation = Quaternion.identity;
 
             float leadSpanHalf = 0.00762f * scale; // 6 rows span at scale
-            float bodyRadius = 0.0032f * scale;
-            float bodyLength = 0.0055f * scale;
+            float bodyRadius = 0.0015f * scale;
+            float bodyLength = 0.0035f * scale;
 
             // Ceramic body
             GameObject body = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -288,10 +299,10 @@ namespace BenchFlow.Editor
             Color brownBand = new Color(0.45f, 0.22f, 0.05f);
             Color goldBand = new Color(0.85f, 0.70f, 0.20f);
 
-            CreateBand("Band1_Red", body.transform, -0.003f, redBand);
-            CreateBand("Band2_Red", body.transform, -0.001f, redBand);
-            CreateBand("Band3_Brown", body.transform, 0.001f, brownBand);
-            CreateBand("Band4_Gold", body.transform, 0.003f, goldBand);
+            CreateBand("Band1_Red", body.transform, -0.30f, redBand);
+            CreateBand("Band2_Red", body.transform, -0.10f, redBand);
+            CreateBand("Band3_Brown", body.transform, 0.10f, brownBand);
+            CreateBand("Band4_Gold", body.transform, 0.32f, goldBand);
 
             // Wire Leads
             CreateResistorLead("LeadA", root.transform, -leadSpanHalf, -bodyLength * 0.9f, leadMat, scale);
@@ -311,13 +322,13 @@ namespace BenchFlow.Editor
             return part;
         }
 
-        static void CreateBand(string name, Transform parent, float yOffset, Color color)
+        static void CreateBand(string name, Transform parent, float bodyAxisOffset, Color color)
         {
             GameObject band = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             band.name = name;
             band.transform.SetParent(parent, false);
-            band.transform.localPosition = new Vector3(0, yOffset * 200f, 0);
-            band.transform.localScale = new Vector3(1.05f, 0.12f, 1.05f);
+            band.transform.localPosition = new Vector3(0, bodyAxisOffset, 0);
+            band.transform.localScale = new Vector3(1.02f, 0.055f, 1.02f);
             band.transform.localRotation = Quaternion.identity;
             band.GetComponent<Renderer>().sharedMaterial = MakeMaterial(name + "_Mat", color);
             Object.DestroyImmediate(band.GetComponent<Collider>());
@@ -352,8 +363,8 @@ namespace BenchFlow.Editor
             root.transform.rotation = Quaternion.identity;
 
             float leadSpanHalf = 0.00254f * scale; // 2 rows span at scale
-            float domeRadius = 0.0055f * scale;
-            float domeHeight = 0.008f * scale;
+            float domeRadius = 0.0025f * scale;
+            float domeHeight = 0.004f * scale;
 
             // Dome
             GameObject dome = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -408,29 +419,19 @@ namespace BenchFlow.Editor
             GameObject markerRoot = new GameObject(name);
             markerRoot.transform.position = pos;
 
-            // Pulsing sphere
+            // Keep the glow centered over the exact target hole. Its small footprint
+            // leaves adjacent holes readable and avoids the old oversized ring effect.
             GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             sphere.name = "GlowSphere";
             sphere.transform.SetParent(markerRoot.transform, false);
-            sphere.transform.localPosition = Vector3.up * (0.004f * scale);
-            sphere.transform.localScale = Vector3.one * (0.006f * scale);
+            sphere.transform.localPosition = Vector3.up * 0.0012f;
+            sphere.transform.localScale = Vector3.one * 0.0055f;
             sphere.GetComponent<Renderer>().sharedMaterial = mat;
             Object.DestroyImmediate(sphere.GetComponent<Collider>());
             HologramPulse pulse = sphere.AddComponent<HologramPulse>();
-            pulse.baseScale = 0.006f * scale;
-            pulse.pulseScaleRange = 0.002f * scale;
-
-            // Floating Label Tag
-            GameObject tag = Primitive("Label_" + label, PrimitiveType.Cube,
-                pos + Vector3.up * (0.022f * scale) + Vector3.back * (0.015f * scale),
-                new Vector3(0.026f * scale, 0.008f * scale, 0.014f * scale),
-                MakeMaterial("TagBack", new Color(0.02f, 0.12f, 0.18f, 0.95f)));
-            tag.transform.SetParent(markerRoot.transform, true);
-            Object.DestroyImmediate(tag.GetComponent<Collider>());
-
-            GameObject textObj = MakeText("LabelText_" + label, label, mat.color, 0.0022f * scale,
-                pos + Vector3.up * (0.026f * scale) + Vector3.back * (0.015f * scale), markerRoot.transform);
-            textObj.transform.rotation = Quaternion.Euler(40, 0, 0);
+            pulse.glowColor = new Color(0.16f, 0.72f, 1f, 1f);
+            pulse.baseScale = 0.0055f;
+            pulse.pulseScaleRange = 0.00045f;
 
             return markerRoot;
         }
@@ -449,20 +450,20 @@ namespace BenchFlow.Editor
             Object.DestroyImmediate(backer.GetComponent<Collider>());
 
             // Title
-            GameObject titleObj = MakeText("Step Title", "STEP 1 OF 4\nPLACE THE RED LED", Color.white, 0.0022f,
+            GameObject titleObj = MakeText("Step Title", "STEP 1 OF 4\nPLACE THE RED LED", Color.white, 0.0018f,
                 new Vector3(-0.145f, 0.068f, -0.004f), root.transform);
             tutorial.stepTitleText = titleObj.GetComponent<TextMesh>();
             tutorial.stepTitleText.fontStyle = FontStyle.Bold;
 
             // Instruction
             GameObject instrObj = MakeText("Step Instruction", "Long leg (Anode) → 14c\nShort leg (Cathode) → 16c",
-                new Color(0.85f, 0.90f, 0.95f), 0.0018f,
+                new Color(0.85f, 0.90f, 0.95f), 0.00145f,
                 new Vector3(-0.145f, 0.018f, -0.004f), root.transform);
             tutorial.stepInstructionText = instrObj.GetComponent<TextMesh>();
 
             // Status / Feedback
             GameObject statusObj = MakeText("Step Status", "Follow the glowing targets.",
-                new Color(0.2f, 0.85f, 1f), 0.0016f,
+                new Color(0.2f, 0.85f, 1f), 0.00125f,
                 new Vector3(-0.145f, -0.052f, -0.004f), root.transform);
             tutorial.statusText = statusObj.GetComponent<TextMesh>();
 
@@ -529,6 +530,26 @@ namespace BenchFlow.Editor
             return root;
         }
 
+        static GameObject BuildUndoButton(Vector3 pos, Material btnMat, TutorialController tutorial)
+        {
+            GameObject root = new GameObject("3D UNDO Button");
+            root.transform.position = pos;
+            GameObject baseObj = Primitive("UndoBase", PrimitiveType.Cylinder, pos,
+                new Vector3(0.026f, 0.004f, 0.026f), MakeMaterial("UndoBaseMat", new Color(0.08f, 0.11f, 0.15f)));
+            baseObj.transform.SetParent(root.transform, true);
+            GameObject cap = Primitive("UndoCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.003f,
+                new Vector3(0.022f, 0.005f, 0.022f), btnMat);
+            cap.transform.SetParent(root.transform, true);
+            GameObject textObj = MakeText("UndoText", "UNDO", Color.white, 0.0018f,
+                pos + Vector3.up * 0.008f, root.transform);
+            textObj.transform.rotation = Quaternion.Euler(90, 0, 0);
+            textObj.GetComponent<TextMesh>().anchor = TextAnchor.MiddleCenter;
+            BoxCollider col = root.AddComponent<BoxCollider>();
+            col.center = Vector3.up * 0.004f;
+            col.size = new Vector3(0.028f, 0.016f, 0.028f);
+            return root;
+        }
+
         static GameObject PlaceModel(string name, string path, Vector3 position, Quaternion rotation, Vector3 scale)
         {
             GameObject asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
@@ -545,22 +566,56 @@ namespace BenchFlow.Editor
             return instance;
         }
 
+        static GameObject PlaceFittedModel(string name, string path, Vector3 position, Quaternion rotation, Vector2 footprint)
+        {
+            GameObject asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (asset == null)
+            {
+                Debug.LogWarning("Missing or unimported model at " + path);
+                return null;
+            }
+
+            GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(asset);
+            instance.name = name;
+            instance.transform.SetPositionAndRotation(Vector3.zero, rotation);
+            instance.transform.localScale = Vector3.one;
+            Renderer[] renderers = instance.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0) return instance;
+
+            Bounds bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+            Vector3 size = bounds.size;
+            if (size.x < 0.0001f || size.z < 0.0001f)
+            {
+                Debug.LogWarning("Could not fit Arduino model; unexpected orientation/scale.");
+                return instance;
+            }
+
+            float sx = footprint.x / size.x;
+            float sz = footprint.y / size.z;
+            float sy = (sx + sz) * 0.5f;
+            instance.transform.localScale = new Vector3(sx, sy, sz);
+            bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+            Vector3 correction = new Vector3(position.x - bounds.center.x, DeskTopY - bounds.min.y, position.z - bounds.center.z);
+            instance.transform.position += correction;
+            bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+            Debug.Log($"Fitted user Arduino model to {footprint.x:F3} x {footprint.y:F3} m at {bounds.center:F3}, resting at Y={bounds.min.y:F3} m.");
+            return instance;
+        }
+
         static GameObject MakeAnchor(string name, Vector3 position, Material material)
         {
-            GameObject anchor = Primitive(name, PrimitiveType.Sphere, position, Vector3.one * 0.008f, material);
+            GameObject anchor = Primitive(name, PrimitiveType.Sphere, position, Vector3.one * 0.0042f, material);
             return anchor;
         }
 
         static GameObject MakePinLabel(string label, Vector3 position, Material material)
         {
-            GameObject tag = Primitive("Pin Label " + label, PrimitiveType.Cube, position,
-                new Vector3(0.032f, 0.009f, 0.016f),
-                MakeMaterial("PinLabelBack", new Color(0.02f, 0.12f, 0.18f, 0.95f)));
-            Object.DestroyImmediate(tag.GetComponent<Collider>());
-
-            GameObject textObj = MakeText("Text " + label, label, material.color, 0.0026f, position + Vector3.up * 0.007f, null);
+            GameObject textObj = MakeText("Text " + label, label, material.color, 0.0014f, position, null);
             textObj.transform.rotation = Quaternion.Euler(90, 0, 0);
-            return tag;
+            return textObj;
         }
 
         static GameObject MakeText(string name, string value, Color color, float size, Vector3 localPosition, Transform parent)
