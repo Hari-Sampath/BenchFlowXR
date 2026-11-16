@@ -215,6 +215,7 @@ namespace BenchFlow.Editor
             cameraObj.transform.SetParent(vrRigObj.transform, false);
             cameraObj.tag = "MainCamera";
             Camera cam = cameraObj.AddComponent<Camera>();
+            cameraObj.AddComponent<AudioListener>();
             cam.nearClipPlane = 0.05f;
             cam.fieldOfView = 62f;
             cam.clearFlags = CameraClearFlags.SolidColor;

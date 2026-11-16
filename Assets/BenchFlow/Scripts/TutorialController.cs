@@ -69,7 +69,7 @@ namespace BenchFlow
 
             if (stepInstructionText == null)
             {
-                TextMesh[] texts = FindObjectsByType<TextMesh>();
+                TextMesh[] texts = FindObjectsByType<TextMesh>(FindObjectsSortMode.None);
                 foreach (var t in texts)
                 {
                     if (t.name.Contains("Instruction") || t.name.Contains("Step instruction"))
