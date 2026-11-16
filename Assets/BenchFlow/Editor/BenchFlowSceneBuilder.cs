@@ -36,12 +36,12 @@ namespace BenchFlow.Editor
             // Shaders and Materials
             Material blueGlow = MakeMaterial("Tutorial Hologram Blue", new Color(0.10f, 0.70f, 1f), true);
             Material cyanGlow = MakeMaterial("Pin Label Cyan", new Color(0.30f, 0.90f, 1f), true);
-            Material panelMat = MakeMaterial("Instruction Glass", new Color(0.02f, 0.05f, 0.08f, 0.94f));
+            Material panelMat = MakeGlassMaterial("Instruction Glass", new Color(0.03f, 0.07f, 0.13f, 0.52f));
             Material ceramicMat = MakeMaterial("Resistor Ceramic", new Color(0.85f, 0.74f, 0.58f));
             Material wireMetalMat = MakeMaterial("Metal Lead", new Color(0.75f, 0.77f, 0.80f));
             Material ledRedOff = MakeMaterial("LED Red Off", new Color(0.6f, 0.05f, 0.05f, 0.9f));
             Material ledRedLit = MakeMaterial("LED Red Lit", new Color(1f, 0.15f, 0.15f, 1f), true);
-            Material runBtnMat = MakeMaterial("Run Button Mat", new Color(0.08f, 0.55f, 0.85f), true);
+            Material runBtnMat = MakeMaterial("Run Button Mat", new Color(0.08f, 0.65f, 0.95f), true);
 
             // 2. Breadboard Object & Grid (Enlarged & brought close to foreground, matching reference video)
             GameObject breadboardObject = new GameObject("Breadboard | Electrical Grid");
@@ -180,24 +180,29 @@ namespace BenchFlow.Editor
 
             // 9. Floating 3D Guided Card (tilted towards VR player)
             GameObject cardObj = BuildGuidedCard(
-                new Vector3(0.01f, DeskTopY + 0.16f, 0.12f),
-                Quaternion.Euler(18f, 0f, 0f),
+                new Vector3(0.01f, DeskTopY + 0.165f, 0.12f),
+                Quaternion.Euler(16f, 0f, 0f),
                 panelMat, cyanGlow, tutorial);
 
-            // 10. Interactive 3D RUN & RESET Buttons
+            // 10. Interactive 3D Control Console with RUN, RESET, & UNDO Buttons
+            GameObject consoleDock = Primitive("Workbench Control Console", PrimitiveType.Cube,
+                new Vector3(0.01f, DeskTopY + 0.003f, -0.185f), new Vector3(0.24f, 0.006f, 0.075f),
+                MakeMaterial("ConsoleDockMat", new Color(0.06f, 0.08f, 0.11f)));
+            consoleDock.transform.rotation = Quaternion.Euler(18f, 0f, 0f);
+
             GameObject runBtn = BuildRunButton(
-                new Vector3(0.000f, DeskTopY + 0.006f, -0.195f),
+                new Vector3(0.010f, DeskTopY + 0.010f, -0.185f),
                 runBtnMat, tutorial);
 
-            Material resetBtnMat = MakeMaterial("Reset Button Mat", new Color(0.25f, 0.28f, 0.32f));
+            Material resetBtnMat = MakeMaterial("Reset Button Mat", new Color(0.55f, 0.22f, 0.22f));
             GameObject resetBtn = BuildResetButton(
-                new Vector3(0.050f, DeskTopY + 0.006f, -0.195f),
+                new Vector3(0.075f, DeskTopY + 0.009f, -0.185f),
                 resetBtnMat, tutorial);
             tutorial.resetButtonObject = resetBtn;
 
             GameObject undoBtn = BuildUndoButton(
-                new Vector3(-0.050f, DeskTopY + 0.006f, -0.195f),
-                MakeMaterial("Undo Button Mat", new Color(0.18f, 0.38f, 0.58f)), tutorial);
+                new Vector3(-0.055f, DeskTopY + 0.009f, -0.185f),
+                MakeMaterial("Undo Button Mat", new Color(0.18f, 0.40f, 0.65f)), tutorial);
             tutorial.undoButtonObject = undoBtn;
 
             // 11. VR Rig & Player (Positioned at comfortable viewing distance from foreground breadboard)
@@ -442,37 +447,110 @@ namespace BenchFlow.Editor
             root.transform.position = pos;
             root.transform.rotation = rot;
 
-            // Glass backer
-            GameObject backer = Primitive("Card Backer", PrimitiveType.Cube, pos, new Vector3(0.32f, 0.19f, 0.006f), backerMat);
+            float width = 0.38f;
+            float height = 0.22f;
+            float thickness = 0.004f;
+
+            // 1. Translucent frosted glass backer
+            GameObject backer = Primitive("Card Backer", PrimitiveType.Cube, pos, new Vector3(width, height, thickness), backerMat);
             backer.transform.SetParent(root.transform, false);
             backer.transform.localPosition = Vector3.zero;
             backer.transform.localRotation = Quaternion.identity;
             Object.DestroyImmediate(backer.GetComponent<Collider>());
 
-            // Title
-            GameObject titleObj = MakeText("Step Title", "STEP 1 OF 4\nPLACE THE RED LED", Color.white, 0.0018f,
-                new Vector3(-0.145f, 0.068f, -0.004f), root.transform);
+            // 2. Glowing Holographic Bezel Frame around glass perimeter
+            Material borderMat = MakeMaterial("Instruction Glow Border", new Color(0.18f, 0.78f, 1.0f, 0.85f), true);
+            float borderThick = 0.0025f;
+            float halfW = width * 0.5f;
+            float halfH = height * 0.5f;
+            CreateFrameEdge("BorderTop", root.transform, new Vector3(0, halfH, -0.0025f), new Vector3(width + borderThick, borderThick, 0.003f), borderMat);
+            CreateFrameEdge("BorderBottom", root.transform, new Vector3(0, -halfH, -0.0025f), new Vector3(width + borderThick, borderThick, 0.003f), borderMat);
+            CreateFrameEdge("BorderLeft", root.transform, new Vector3(-halfW, 0, -0.0025f), new Vector3(borderThick, height, 0.003f), borderMat);
+            CreateFrameEdge("BorderRight", root.transform, new Vector3(halfW, 0, -0.0025f), new Vector3(borderThick, height, 0.003f), borderMat);
+
+            // 3. Top Header Category Pill
+            GameObject badgeObj = MakeText("Card Badge", "[ BENCHFLOW XR  •  LESSON 1 ]", new Color(0.22f, 0.75f, 1.0f), 0.0012f,
+                new Vector3(-0.170f, 0.088f, -0.004f), root.transform);
+            badgeObj.GetComponent<TextMesh>().fontStyle = FontStyle.Bold;
+
+            // 4. Step Title
+            GameObject titleObj = MakeText("Step Title", "STEP 1 OF 4: PLACE THE RED LED", Color.white, 0.00185f,
+                new Vector3(-0.170f, 0.064f, -0.004f), root.transform);
             tutorial.stepTitleText = titleObj.GetComponent<TextMesh>();
             tutorial.stepTitleText.fontStyle = FontStyle.Bold;
 
-            // Instruction
-            GameObject instrObj = MakeText("Step Instruction", "Long leg (Anode) → 14c\nShort leg (Cathode) → 16c",
-                new Color(0.85f, 0.90f, 0.95f), 0.00145f,
-                new Vector3(-0.145f, 0.018f, -0.004f), root.transform);
+            // 5. Glowing horizontal neon divider line
+            GameObject divider = Primitive("DividerLine", PrimitiveType.Cube, pos, new Vector3(0.34f, 0.0012f, 0.002f), borderMat);
+            divider.transform.SetParent(root.transform, false);
+            divider.transform.localPosition = new Vector3(0f, 0.046f, -0.003f);
+            Object.DestroyImmediate(divider.GetComponent<Collider>());
+
+            // 6. Formatted Bulleted Instructions
+            GameObject instrObj = MakeText("Step Instruction",
+                "• Long leg  (Anode +)   →  Hole 14c\n" +
+                "• Short leg (Cathode -) →  Hole 16c\n" +
+                "• Follow the glowing blue target markers.",
+                new Color(0.90f, 0.94f, 0.98f), 0.00140f,
+                new Vector3(-0.170f, 0.016f, -0.004f), root.transform);
             tutorial.stepInstructionText = instrObj.GetComponent<TextMesh>();
 
-            // Status / Feedback
-            GameObject statusObj = MakeText("Step Status", "Follow the glowing targets.",
-                new Color(0.2f, 0.85f, 1f), 0.00125f,
-                new Vector3(-0.145f, -0.052f, -0.004f), root.transform);
+            // 7. Status / Feedback Banner
+            GameObject statusObj = MakeText("Step Status", "⚡ Follow the glowing targets on the breadboard.",
+                new Color(0.25f, 0.88f, 1.0f), 0.00125f,
+                new Vector3(-0.170f, -0.068f, -0.004f), root.transform);
             tutorial.statusText = statusObj.GetComponent<TextMesh>();
 
-            // Arduino Blink Code Panel (shown on right half of card)
-            GameObject codeObj = MakeText("Code Display", "", new Color(0.35f, 0.95f, 0.55f), 0.0014f,
-                new Vector3(0.018f, 0.055f, -0.004f), root.transform);
+            // 8. Arduino Blink Code Panel (shown on right half of card)
+            GameObject codeObj = MakeText("Code Display", "", new Color(0.35f, 0.95f, 0.55f), 0.00130f,
+                new Vector3(0.040f, 0.025f, -0.004f), root.transform);
             tutorial.codeDisplayNode = codeObj.GetComponent<TextMesh>();
 
             return root;
+        }
+
+        static void CreateFrameEdge(string name, Transform parent, Vector3 localPos, Vector3 localScale, Material mat)
+        {
+            GameObject edge = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            edge.name = name;
+            edge.transform.SetParent(parent, false);
+            edge.transform.localPosition = localPos;
+            edge.transform.localRotation = Quaternion.identity;
+            edge.transform.localScale = localScale;
+            edge.GetComponent<Renderer>().sharedMaterial = mat;
+            Object.DestroyImmediate(edge.GetComponent<Collider>());
+        }
+
+        static void AddButtonNameplate(Transform parent, string label, string subtitle, Color labelColor, Vector3 localOffset)
+        {
+            // Angled nameplate plate tilted 38° towards the user's eye-line
+            GameObject plate = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            plate.name = label + "_Nameplate";
+            plate.transform.SetParent(parent, false);
+            plate.transform.localPosition = localOffset;
+            plate.transform.localRotation = Quaternion.Euler(38f, 0f, 0f);
+            plate.transform.localScale = new Vector3(0.038f, 0.012f, 0.002f);
+            plate.GetComponent<Renderer>().sharedMaterial = MakeMaterial("NameplateMat_" + label, new Color(0.05f, 0.07f, 0.10f));
+            Object.DestroyImmediate(plate.GetComponent<Collider>());
+
+            // Main Label Text
+            GameObject textObj = MakeText(label + "_Label", label, labelColor, 0.00155f,
+                localOffset + new Vector3(0f, 0.0016f, -0.0018f), parent);
+            textObj.transform.localRotation = Quaternion.Euler(38f, 0f, 0f);
+            TextMesh tm = textObj.GetComponent<TextMesh>();
+            tm.anchor = TextAnchor.MiddleCenter;
+            tm.alignment = TextAlignment.Center;
+            tm.fontStyle = FontStyle.Bold;
+
+            // Subtitle Description
+            if (!string.IsNullOrEmpty(subtitle))
+            {
+                GameObject subObj = MakeText(label + "_Sub", subtitle, new Color(0.65f, 0.70f, 0.78f), 0.00090f,
+                    localOffset + new Vector3(0f, -0.0030f, -0.0018f), parent);
+                subObj.transform.localRotation = Quaternion.Euler(38f, 0f, 0f);
+                TextMesh subTm = subObj.GetComponent<TextMesh>();
+                subTm.anchor = TextAnchor.MiddleCenter;
+                subTm.alignment = TextAlignment.Center;
+            }
         }
 
         static GameObject BuildRunButton(Vector3 pos, Material btnMat, TutorialController tutorial)
@@ -480,26 +558,35 @@ namespace BenchFlow.Editor
             GameObject root = new GameObject("3D RUN Button");
             root.transform.position = pos;
 
-            // Base
-            GameObject baseObj = Primitive("BtnBase", PrimitiveType.Cylinder, pos, new Vector3(0.030f, 0.005f, 0.030f),
-                MakeMaterial("BtnBaseMat", new Color(0.1f, 0.12f, 0.15f)));
+            // Base housing
+            GameObject baseObj = Primitive("BtnBase", PrimitiveType.Cylinder, pos, new Vector3(0.034f, 0.005f, 0.034f),
+                MakeMaterial("BtnBaseMat", new Color(0.10f, 0.12f, 0.16f)));
             baseObj.transform.SetParent(root.transform, true);
 
-            // Push surface
-            GameObject cap = Primitive("BtnCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.004f, new Vector3(0.025f, 0.006f, 0.025f), btnMat);
+            // Glowing collar ring
+            GameObject glowRing = Primitive("BtnGlowRing", PrimitiveType.Cylinder, pos + Vector3.up * 0.002f, new Vector3(0.032f, 0.002f, 0.032f),
+                MakeMaterial("BtnRingGlow", new Color(0.12f, 0.75f, 1.0f), true));
+            glowRing.transform.SetParent(root.transform, true);
+            Object.DestroyImmediate(glowRing.GetComponent<Collider>());
+
+            // Push surface cap
+            GameObject cap = Primitive("BtnCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.005f, new Vector3(0.028f, 0.007f, 0.028f), btnMat);
             cap.transform.SetParent(root.transform, true);
 
-            // Text
-            GameObject textObj = MakeText("BtnText", "RUN", Color.white, 0.0028f, pos + Vector3.up * 0.010f, root.transform);
+            // Cap text
+            GameObject textObj = MakeText("BtnText", "RUN", Color.white, 0.0026f, pos + Vector3.up * 0.010f, root.transform);
             textObj.transform.rotation = Quaternion.Euler(90, 0, 0);
             tutorial.runButtonText = textObj.GetComponent<TextMesh>();
             tutorial.runButtonText.anchor = TextAnchor.MiddleCenter;
 
+            // Prominent angled nameplate badge facing user
+            AddButtonNameplate(root.transform, "RUN", "SIMULATE", new Color(0.15f, 0.90f, 1.0f), new Vector3(0f, 0.004f, -0.022f));
+
             tutorial.runButtonObject = root;
 
             BoxCollider col = root.AddComponent<BoxCollider>();
-            col.center = Vector3.up * 0.005f;
-            col.size = new Vector3(0.032f, 0.018f, 0.032f);
+            col.center = new Vector3(0f, 0.005f, -0.008f);
+            col.size = new Vector3(0.040f, 0.020f, 0.044f);
 
             return root;
         }
@@ -509,23 +596,26 @@ namespace BenchFlow.Editor
             GameObject root = new GameObject("3D RESET Button");
             root.transform.position = pos;
 
-            // Base
-            GameObject baseObj = Primitive("ResetBase", PrimitiveType.Cylinder, pos, new Vector3(0.026f, 0.004f, 0.026f),
+            // Base housing
+            GameObject baseObj = Primitive("ResetBase", PrimitiveType.Cylinder, pos, new Vector3(0.028f, 0.004f, 0.028f),
                 MakeMaterial("ResetBaseMat", new Color(0.12f, 0.14f, 0.16f)));
             baseObj.transform.SetParent(root.transform, true);
 
-            // Push surface
-            GameObject cap = Primitive("ResetCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.003f, new Vector3(0.022f, 0.005f, 0.022f), btnMat);
+            // Push surface cap
+            GameObject cap = Primitive("ResetCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.004f, new Vector3(0.024f, 0.006f, 0.024f), btnMat);
             cap.transform.SetParent(root.transform, true);
 
-            // Text
-            GameObject textObj = MakeText("ResetText", "RESET", new Color(0.85f, 0.88f, 0.92f), 0.0022f, pos + Vector3.up * 0.008f, root.transform);
+            // Cap text
+            GameObject textObj = MakeText("ResetText", "RESET", new Color(0.95f, 0.95f, 0.95f), 0.0020f, pos + Vector3.up * 0.008f, root.transform);
             textObj.transform.rotation = Quaternion.Euler(90, 0, 0);
             textObj.GetComponent<TextMesh>().anchor = TextAnchor.MiddleCenter;
 
+            // Prominent angled nameplate badge facing user
+            AddButtonNameplate(root.transform, "RESET", "RESTART", new Color(0.95f, 0.45f, 0.35f), new Vector3(0f, 0.004f, -0.020f));
+
             BoxCollider col = root.AddComponent<BoxCollider>();
-            col.center = Vector3.up * 0.004f;
-            col.size = new Vector3(0.028f, 0.016f, 0.028f);
+            col.center = new Vector3(0f, 0.004f, -0.007f);
+            col.size = new Vector3(0.036f, 0.018f, 0.040f);
 
             return root;
         }
@@ -534,19 +624,28 @@ namespace BenchFlow.Editor
         {
             GameObject root = new GameObject("3D UNDO Button");
             root.transform.position = pos;
-            GameObject baseObj = Primitive("UndoBase", PrimitiveType.Cylinder, pos,
-                new Vector3(0.026f, 0.004f, 0.026f), MakeMaterial("UndoBaseMat", new Color(0.08f, 0.11f, 0.15f)));
+
+            // Base housing
+            GameObject baseObj = Primitive("UndoBase", PrimitiveType.Cylinder, pos, new Vector3(0.028f, 0.004f, 0.028f),
+                MakeMaterial("UndoBaseMat", new Color(0.08f, 0.11f, 0.15f)));
             baseObj.transform.SetParent(root.transform, true);
-            GameObject cap = Primitive("UndoCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.003f,
-                new Vector3(0.022f, 0.005f, 0.022f), btnMat);
+
+            // Push surface cap
+            GameObject cap = Primitive("UndoCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.004f, new Vector3(0.024f, 0.006f, 0.024f), btnMat);
             cap.transform.SetParent(root.transform, true);
-            GameObject textObj = MakeText("UndoText", "UNDO", Color.white, 0.0018f,
-                pos + Vector3.up * 0.008f, root.transform);
+
+            // Cap text
+            GameObject textObj = MakeText("UndoText", "UNDO", Color.white, 0.0020f, pos + Vector3.up * 0.008f, root.transform);
             textObj.transform.rotation = Quaternion.Euler(90, 0, 0);
             textObj.GetComponent<TextMesh>().anchor = TextAnchor.MiddleCenter;
+
+            // Prominent angled nameplate badge facing user
+            AddButtonNameplate(root.transform, "UNDO", "LAST WIRE", new Color(0.35f, 0.75f, 1.0f), new Vector3(0f, 0.004f, -0.020f));
+
             BoxCollider col = root.AddComponent<BoxCollider>();
-            col.center = Vector3.up * 0.004f;
-            col.size = new Vector3(0.028f, 0.016f, 0.028f);
+            col.center = new Vector3(0f, 0.004f, -0.007f);
+            col.size = new Vector3(0.036f, 0.018f, 0.040f);
+
             return root;
         }
 
@@ -645,13 +744,72 @@ namespace BenchFlow.Editor
             return obj;
         }
 
-        static Material MakeMaterial(string name, Color color, bool emission = false)
+        static Material MakeGlassMaterial(string name, Color tintColor)
+        {
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+            if (shader == null) shader = Shader.Find("Standard");
+            if (shader == null) shader = Shader.Find("Sprites/Default");
+
+            Material mat = new Material(shader) { name = name };
+            mat.color = tintColor;
+
+            // Setup for Standard shader transparency
+            mat.SetFloat("_Mode", 3f); // 3 = Transparent
+            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetInt("_ZWrite", 0);
+            mat.SetFloat("_Glossiness", 0.75f);
+            mat.SetFloat("_Metallic", 0.05f);
+            mat.DisableKeyword("_ALPHATEST_ON");
+            mat.EnableKeyword("_ALPHABLEND_ON");
+            mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            mat.renderQueue = 3000;
+            mat.SetOverrideTag("RenderType", "Transparent");
+
+            // Setup for Universal Render Pipeline Lit transparency if active
+            if (mat.HasProperty("_Surface"))
+            {
+                mat.SetFloat("_Surface", 1.0f); // 1 = Transparent
+                mat.SetFloat("_Blend", 0.0f);   // 0 = Alpha blend
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetInt("_ZWrite", 0);
+                mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            }
+            return mat;
+        }
+
+        static Material MakeMaterial(string name, Color color, bool emission = false, bool transparent = false)
         {
             Shader shader = Shader.Find("Universal Render Pipeline/Lit");
             if (shader == null) shader = Shader.Find("Standard");
             if (shader == null) shader = Shader.Find("Sprites/Default");
 
             Material mat = new Material(shader) { name = name, color = color };
+
+            if (transparent || color.a < 0.95f)
+            {
+                mat.SetFloat("_Mode", 3f);
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetInt("_ZWrite", 0);
+                mat.DisableKeyword("_ALPHATEST_ON");
+                mat.EnableKeyword("_ALPHABLEND_ON");
+                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                mat.renderQueue = 3000;
+                mat.SetOverrideTag("RenderType", "Transparent");
+
+                if (mat.HasProperty("_Surface"))
+                {
+                    mat.SetFloat("_Surface", 1.0f);
+                    mat.SetFloat("_Blend", 0.0f);
+                    mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                    mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                    mat.SetInt("_ZWrite", 0);
+                    mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                }
+            }
+
             if (emission)
             {
                 mat.EnableKeyword("_EMISSION");

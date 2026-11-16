@@ -39,7 +39,7 @@ namespace BenchFlow
 
             if (resistor == null || led == null)
             {
-                CircuitPart[] allParts = FindObjectsByType<CircuitPart>(FindObjectsSortMode.None);
+                CircuitPart[] allParts = FindObjectsByType<CircuitPart>();
                 foreach (var p in allParts)
                 {
                     if (p.componentId == "RESISTOR" && resistor == null) resistor = p;

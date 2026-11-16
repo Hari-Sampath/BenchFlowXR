@@ -2377,7 +2377,7 @@ Transform:
   m_GameObject: {fileID: 636673485}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.05, y: 0.501, z: -0.195}
+  m_LocalPosition: {x: 0.075, y: 0.504, z: -0.185}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -2774,7 +2774,7 @@ Transform:
   m_GameObject: {fileID: 715264143}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.145, y: -0.052, z: -0.004}
+  m_LocalPosition: {x: -0.170, y: -0.068, z: -0.004}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2837,7 +2837,7 @@ TextMesh:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 715264143}
-  m_Text: Follow the glowing targets.
+  m_Text: "\u26A1 Follow the glowing targets on the breadboard."
   m_OffsetZ: 0
   m_CharacterSize: 0.00125
   m_LineSpacing: 1
@@ -3210,7 +3210,7 @@ Transform:
   m_GameObject: {fileID: 775023124}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.501, z: -0.195}
+  m_LocalPosition: {x: 0.01, y: 0.505, z: -0.185}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -3267,7 +3267,7 @@ Transform:
   m_GameObject: {fileID: 779218613}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.145, y: 0.018, z: -0.004}
+  m_LocalPosition: {x: -0.170, y: 0.016, z: -0.004}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3330,9 +3330,9 @@ TextMesh:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 779218613}
-  m_Text: "Long leg (Anode) \u2192 14c\nShort leg (Cathode) \u2192 16c"
+  m_Text: "• Long leg  (Anode +)   \u2192  Hole 14c\n• Short leg (Cathode -) \u2192  Hole 16c\n• Follow the glowing blue target markers."
   m_OffsetZ: 0
-  m_CharacterSize: 0.00145
+  m_CharacterSize: 0.00140
   m_LineSpacing: 1
   m_Anchor: 3
   m_Alignment: 0
@@ -3803,7 +3803,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.32, y: 0.19, z: 0.006}
+  m_LocalScale: {x: 0.38, y: 0.22, z: 0.004}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1707020753}
@@ -4306,7 +4306,7 @@ Transform:
   m_GameObject: {fileID: 1238857166}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.05, y: 0.501, z: -0.195}
+  m_LocalPosition: {x: -0.055, y: 0.504, z: -0.185}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -6193,7 +6193,7 @@ Transform:
   m_GameObject: {fileID: 1803759140}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.145, y: 0.068, z: -0.004}
+  m_LocalPosition: {x: -0.170, y: 0.064, z: -0.004}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6256,11 +6256,9 @@ TextMesh:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1803759140}
-  m_Text: 'STEP 1 OF 4
-
-    PLACE THE RED LED'
+  m_Text: 'STEP 1 OF 4: PLACE THE RED LED'
   m_OffsetZ: 0
-  m_CharacterSize: 0.0018
+  m_CharacterSize: 0.00185
   m_LineSpacing: 1
   m_Anchor: 3
   m_Alignment: 0
@@ -7042,13 +7040,15 @@ Material:
   m_Shader: {fileID: 46, guid: 0000000000000000f000000000000000, type: 0}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
+  m_ValidKeywords:
+  - _ALPHABLEND_ON
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
+  m_CustomRenderQueue: 3000
+  stringTagMap:
+    RenderType: Transparent
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -7095,21 +7095,21 @@ Material:
     - _BumpScale: 1
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
-    - _DstBlend: 0
+    - _DstBlend: 10
     - _GlossMapScale: 1
-    - _Glossiness: 0.5
+    - _Glossiness: 0.75
     - _GlossyReflections: 1
-    - _Metallic: 0
-    - _Mode: 0
+    - _Metallic: 0.05
+    - _Mode: 3
     - _OcclusionStrength: 1
     - _Parallax: 0.02
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
-    - _SrcBlend: 1
+    - _SrcBlend: 5
     - _UVSec: 0
-    - _ZWrite: 1
+    - _ZWrite: 0
     m_Colors:
-    - _Color: {r: 0.02, g: 0.05, b: 0.08, a: 0.94}
+    - _Color: {r: 0.03, g: 0.07, b: 0.13, a: 0.52}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
