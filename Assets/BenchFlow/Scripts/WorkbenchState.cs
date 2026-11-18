@@ -39,7 +39,7 @@ namespace BenchFlow
 
             if (resistor == null || led == null)
             {
-                CircuitPart[] allParts = FindObjectsByType<CircuitPart>(FindObjectsSortMode.None);
+                CircuitPart[] allParts = FindObjectsByType<CircuitPart>(FindObjectsInactive.Exclude);
                 foreach (var p in allParts)
                 {
                     if (p.componentId == "RESISTOR" && resistor == null) resistor = p;
@@ -67,7 +67,7 @@ namespace BenchFlow
 
         public void BeginGrab(CircuitPart part, Pose handPose)
         {
-            if (part == null) return;
+            if (part == null || part.isLocked) return;
 
             // Show holographic ghost target for held part
             if (GhostPreview.Instance != null)
@@ -84,7 +84,7 @@ namespace BenchFlow
 
         public void UpdateGrab(CircuitPart part, Pose handPose)
         {
-            if (part == null) return;
+            if (part == null || part.isLocked) return;
             part.transform.SetPositionAndRotation(handPose.position, handPose.rotation);
         }
 

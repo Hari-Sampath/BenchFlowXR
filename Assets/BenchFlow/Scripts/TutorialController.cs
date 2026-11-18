@@ -69,7 +69,7 @@ namespace BenchFlow
 
             if (stepInstructionText == null)
             {
-                TextMesh[] texts = FindObjectsByType<TextMesh>(FindObjectsSortMode.None);
+                TextMesh[] texts = FindObjectsByType<TextMesh>(FindObjectsInactive.Exclude);
                 foreach (var t in texts)
                 {
                     if (t.name.Contains("Instruction") || t.name.Contains("Step instruction"))
@@ -103,13 +103,85 @@ namespace BenchFlow
 
         /// <summary>
         /// Guarantees that the instruction card backer uses a proper translucent blend mode at runtime,
-        /// adds holographic borders and badges, and labels the workbench console buttons with angled nameplates.
+        /// adds holographic borders and badges, labels workbench console buttons, and styles hole guidance markers.
         /// </summary>
         public void EnsureVisualPolish()
         {
             EnsureSignboardTranslucent();
             EnsureSignboardDecorations();
             EnsureButtonNameplates();
+            EnsureHoleMarkersDark();
+        }
+
+        public void EnsureHoleMarkersDark()
+        {
+            if (breadboard != null)
+            {
+                if (markerHole14c != null && breadboard.TryParseHole("14c", out var h14c)) markerHole14c.transform.position = breadboard.HolePosition(h14c);
+                if (markerHole16c != null && breadboard.TryParseHole("16c", out var h16c)) markerHole16c.transform.position = breadboard.HolePosition(h16c);
+                if (markerHole8d != null && breadboard.TryParseHole("8d", out var h8d)) markerHole8d.transform.position = breadboard.HolePosition(h8d);
+                if (markerHole14d != null && breadboard.TryParseHole("14d", out var h14d)) markerHole14d.transform.position = breadboard.HolePosition(h14d);
+                if (markerHole8b != null && breadboard.TryParseHole("8b", out var h8b)) markerHole8b.transform.position = breadboard.HolePosition(h8b);
+                if (markerHole16a != null && breadboard.TryParseHole("16a", out var h16a)) markerHole16a.transform.position = breadboard.HolePosition(h16a);
+            }
+
+            GameObject[] markers = new GameObject[]
+            {
+                markerHole14c, markerHole16c,
+                markerHole8d, markerHole14d,
+                markerHole8b, markerHole16a,
+                markerPin13, markerPinGnd
+            };
+
+            Color darkBlue = new Color(0.04f, 0.22f, 0.85f, 1f);
+            Material darkBlueMat = CreateRuntimeGlowMat("DarkBlueHoleGlow", darkBlue);
+
+            foreach (var m in markers)
+            {
+                if (m == null) continue;
+
+                // Remove any colliders from guidance markers so they never block raycasts or part placements
+                foreach (var col in m.GetComponentsInChildren<Collider>())
+                {
+                    Destroy(col);
+                }
+
+                // Configure or convert marker children to flat hole socket discs
+                Transform glowChild = m.transform.Find("GlowSphere") ?? m.transform.Find("HoleGlowDisc");
+                if (glowChild != null)
+                {
+                    glowChild.name = "HoleGlowDisc";
+                    // Flatten into the hole socket opening so only the hole glows
+                    glowChild.localPosition = new Vector3(0f, 0.0004f, 0f);
+                    glowChild.localScale = new Vector3(0.0022f, 0.0003f, 0.0022f);
+
+                    Renderer r = glowChild.GetComponent<Renderer>();
+                    if (r != null) r.sharedMaterial = darkBlueMat;
+
+                    HologramPulse pulse = glowChild.GetComponent<HologramPulse>();
+                    if (pulse == null) pulse = glowChild.gameObject.AddComponent<HologramPulse>();
+                    pulse.glowColor = darkBlue;
+                    pulse.baseScale = 0.0022f;
+                    pulse.pulseScaleRange = 0.0001f;
+                    pulse.pulseSpeed = 2.2f;
+                }
+                else
+                {
+                    // Direct anchor (e.g. Arduino Pin 13 / GND)
+                    Renderer r = m.GetComponent<Renderer>();
+                    if (r != null) r.sharedMaterial = darkBlueMat;
+
+                    HologramPulse pulse = m.GetComponent<HologramPulse>();
+                    if (pulse == null && r != null) pulse = m.AddComponent<HologramPulse>();
+                    if (pulse != null)
+                    {
+                        pulse.glowColor = darkBlue;
+                        pulse.baseScale = 0.003f;
+                        pulse.pulseScaleRange = 0.0002f;
+                        pulse.pulseSpeed = 2.2f;
+                    }
+                }
+            }
         }
 
         public void EnsureSignboardTranslucent()
@@ -202,23 +274,116 @@ namespace BenchFlow
         {
             // 1. RUN Button
             GameObject runBtn = runButtonObject ?? GameObject.Find("3D RUN Button") ?? GameObject.Find("RUN Button");
-            if (runBtn != null && runBtn.transform.Find("RUN_Nameplate") == null)
+            if (runBtn != null)
             {
-                AddRuntimeNameplate(runBtn.transform, "RUN", "SIMULATE", new Color(0.15f, 0.90f, 1.0f), new Vector3(0f, 0.004f, -0.022f));
+                // Remove root colliders so clicking the button housing, dock, or text plate in front does NOT actuate
+                foreach (var col in runBtn.GetComponents<Collider>()) Destroy(col);
+
+                Transform cap = runBtn.transform.Find("RunCap") ?? runBtn.transform.Find("BtnCap");
+                if (cap != null)
+                {
+                    cap.name = "RunCap";
+                    // Only the 3D moving cylinder cap is the physical actuator
+                    if (cap.GetComponent<Collider>() == null) cap.gameObject.AddComponent<CapsuleCollider>();
+
+                    WorkbenchButton wb = cap.GetComponent<WorkbenchButton>() ?? cap.gameObject.AddComponent<WorkbenchButton>();
+                    wb.actionType = WorkbenchButtonAction.Run;
+                    wb.movingCap = cap;
+                    wb.tutorial = this;
+                    wb.workbench = workbench;
+                }
+
+                // Attach button controller to root as well for reference
+                WorkbenchButton rootWb = runBtn.GetComponent<WorkbenchButton>() ?? runBtn.AddComponent<WorkbenchButton>();
+                rootWb.actionType = WorkbenchButtonAction.Run;
+                rootWb.movingCap = cap;
+                rootWb.tutorial = this;
+                rootWb.workbench = workbench;
+
+                if (runBtn.transform.Find("RUN_Nameplate") == null)
+                {
+                    AddRuntimeNameplate(runBtn.transform, "RUN", "SIMULATE", new Color(0.15f, 0.90f, 1.0f), new Vector3(0f, 0.004f, -0.022f));
+                }
+
+                // Strip any colliders from children other than the moving cap
+                foreach (var col in runBtn.GetComponentsInChildren<Collider>())
+                {
+                    if (cap != null && col.transform != cap) Destroy(col);
+                }
             }
 
             // 2. RESET Button
             GameObject resetBtn = resetButtonObject ?? GameObject.Find("3D RESET Button") ?? GameObject.Find("RESET Button");
-            if (resetBtn != null && resetBtn.transform.Find("RESET_Nameplate") == null)
+            if (resetBtn != null)
             {
-                AddRuntimeNameplate(resetBtn.transform, "RESET", "RESTART", new Color(0.95f, 0.45f, 0.35f), new Vector3(0f, 0.004f, -0.020f));
+                // Remove root colliders so clicking the text plate in front does NOT actuate
+                foreach (var col in resetBtn.GetComponents<Collider>()) Destroy(col);
+
+                Transform cap = resetBtn.transform.Find("ResetCap");
+                if (cap != null)
+                {
+                    // Only the 3D moving cylinder cap is the physical actuator
+                    if (cap.GetComponent<Collider>() == null) cap.gameObject.AddComponent<CapsuleCollider>();
+
+                    WorkbenchButton wb = cap.GetComponent<WorkbenchButton>() ?? cap.gameObject.AddComponent<WorkbenchButton>();
+                    wb.actionType = WorkbenchButtonAction.Reset;
+                    wb.movingCap = cap;
+                    wb.tutorial = this;
+                    wb.workbench = workbench;
+                }
+
+                WorkbenchButton rootWb = resetBtn.GetComponent<WorkbenchButton>() ?? resetBtn.AddComponent<WorkbenchButton>();
+                rootWb.actionType = WorkbenchButtonAction.Reset;
+                rootWb.movingCap = cap;
+                rootWb.tutorial = this;
+                rootWb.workbench = workbench;
+
+                if (resetBtn.transform.Find("RESET_Nameplate") == null)
+                {
+                    AddRuntimeNameplate(resetBtn.transform, "RESET", "RESTART", new Color(0.95f, 0.45f, 0.35f), new Vector3(0f, 0.004f, -0.020f));
+                }
+
+                foreach (var col in resetBtn.GetComponentsInChildren<Collider>())
+                {
+                    if (cap != null && col.transform != cap) Destroy(col);
+                }
             }
 
             // 3. UNDO Button
             GameObject undoBtn = undoButtonObject ?? GameObject.Find("3D UNDO Button") ?? GameObject.Find("UNDO Button");
-            if (undoBtn != null && undoBtn.transform.Find("UNDO_Nameplate") == null)
+            if (undoBtn != null)
             {
-                AddRuntimeNameplate(undoBtn.transform, "UNDO", "LAST WIRE", new Color(0.35f, 0.75f, 1.0f), new Vector3(0f, 0.004f, -0.020f));
+                // Remove root colliders so clicking the text plate in front does NOT actuate
+                foreach (var col in undoBtn.GetComponents<Collider>()) Destroy(col);
+
+                Transform cap = undoBtn.transform.Find("UndoCap");
+                if (cap != null)
+                {
+                    // Only the 3D moving cylinder cap is the physical actuator
+                    if (cap.GetComponent<Collider>() == null) cap.gameObject.AddComponent<CapsuleCollider>();
+
+                    WorkbenchButton wb = cap.GetComponent<WorkbenchButton>() ?? cap.gameObject.AddComponent<WorkbenchButton>();
+                    wb.actionType = WorkbenchButtonAction.Undo;
+                    wb.movingCap = cap;
+                    wb.tutorial = this;
+                    wb.workbench = workbench;
+                }
+
+                WorkbenchButton rootWb = undoBtn.GetComponent<WorkbenchButton>() ?? undoBtn.AddComponent<WorkbenchButton>();
+                rootWb.actionType = WorkbenchButtonAction.Undo;
+                rootWb.movingCap = cap;
+                rootWb.tutorial = this;
+                rootWb.workbench = workbench;
+
+                if (undoBtn.transform.Find("UNDO_Nameplate") == null)
+                {
+                    AddRuntimeNameplate(undoBtn.transform, "UNDO", "LAST WIRE", new Color(0.35f, 0.75f, 1.0f), new Vector3(0f, 0.004f, -0.020f));
+                }
+
+                foreach (var col in undoBtn.GetComponentsInChildren<Collider>())
+                {
+                    if (cap != null && col.transform != cap) Destroy(col);
+                }
             }
 
             // 4. Workbench Control Console Dock
@@ -333,8 +498,9 @@ namespace BenchFlow
                     {
                         if (anodeAt14c && cathodeAt16c)
                         {
-                            latestFeedback = "LED placed correctly (Anode at 14c, Cathode at 16c).";
+                            latestFeedback = "LED placed correctly (Anode at 14c, Cathode at 16c). Locked in place.";
                             currentStep = 1;
+                            led.isLocked = true;
                         }
                         else
                         {
@@ -359,8 +525,9 @@ namespace BenchFlow
                                     res.terminalHoleA.row == 14 && res.terminalHoleA.column == 3 && res.terminalHoleA.side == BreadboardSide.SideA);
                     if (correct)
                     {
-                        latestFeedback = "220 Ω resistor placed between rows 8 and 14.";
+                        latestFeedback = "220 Ω resistor placed between rows 8 and 14. Locked in place.";
                         currentStep = 2;
+                        res.isLocked = true;
                     }
                     else
                     {
@@ -521,6 +688,11 @@ namespace BenchFlow
         {
             currentStep = 0;
             isProgramRunning = false;
+            if (workbench != null)
+            {
+                if (workbench.led != null) workbench.led.isLocked = false;
+                if (workbench.resistor != null) workbench.resistor.isLocked = false;
+            }
             latestFeedback = "Workbench reset. Start with Step 1: Place the red LED.";
             UpdateStepUI();
         }

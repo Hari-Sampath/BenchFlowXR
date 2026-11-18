@@ -33,8 +33,8 @@ namespace BenchFlow.Editor
             GameObject workbench = PlaceModel("Workbench Model (CC0)", Models + "Workbench_OBJ/workbench.obj",
                 new Vector3(0, 0, 0), Quaternion.identity, Vector3.one * 0.55f);
 
-            // Shaders and Materials
-            Material blueGlow = MakeMaterial("Tutorial Hologram Blue", new Color(0.10f, 0.70f, 1f), true);
+            // Shaders and Materials (darker, saturated royal blue for hole guides)
+            Material blueGlow = MakeMaterial("Tutorial Hologram Blue", new Color(0.04f, 0.22f, 0.85f), true);
             Material cyanGlow = MakeMaterial("Pin Label Cyan", new Color(0.30f, 0.90f, 1f), true);
             Material panelMat = MakeGlassMaterial("Instruction Glass", new Color(0.03f, 0.07f, 0.13f, 0.52f));
             Material ceramicMat = MakeMaterial("Resistor Ceramic", new Color(0.85f, 0.74f, 0.58f));
@@ -425,19 +425,21 @@ namespace BenchFlow.Editor
             GameObject markerRoot = new GameObject(name);
             markerRoot.transform.position = pos;
 
-            // Keep the glow centered over the exact target hole. Its small footprint
-            // leaves adjacent holes readable and avoids the old oversized ring effect.
-            GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            sphere.name = "GlowSphere";
-            sphere.transform.SetParent(markerRoot.transform, false);
-            sphere.transform.localPosition = Vector3.up * 0.0012f;
-            sphere.transform.localScale = Vector3.one * 0.0055f;
-            sphere.GetComponent<Renderer>().sharedMaterial = mat;
-            Object.DestroyImmediate(sphere.GetComponent<Collider>());
-            HologramPulse pulse = sphere.AddComponent<HologramPulse>();
-            pulse.glowColor = new Color(0.16f, 0.72f, 1f, 1f);
-            pulse.baseScale = 0.0055f;
-            pulse.pulseScaleRange = 0.00045f;
+            // Flat illuminated socket plug disc: sits exactly inside the breadboard hole aperture
+            // (0.0022m diameter fits precisely in 2.0x scaled breadboard hole; leaves surrounding area dark)
+            GameObject holeDisc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            holeDisc.name = "HoleGlowDisc";
+            holeDisc.transform.SetParent(markerRoot.transform, false);
+            holeDisc.transform.localPosition = new Vector3(0f, 0.0004f, 0f);
+            holeDisc.transform.localScale = new Vector3(0.0022f, 0.0003f, 0.0022f);
+            holeDisc.GetComponent<Renderer>().sharedMaterial = mat;
+            Object.DestroyImmediate(holeDisc.GetComponent<Collider>());
+
+            HologramPulse pulse = holeDisc.AddComponent<HologramPulse>();
+            pulse.glowColor = new Color(0.04f, 0.22f, 0.85f, 1f); // Dark rich royal blue
+            pulse.baseScale = 0.0022f;
+            pulse.pulseScaleRange = 0.0001f;
+            pulse.pulseSpeed = 2.2f;
 
             return markerRoot;
         }
@@ -570,17 +572,24 @@ namespace BenchFlow.Editor
             glowRing.transform.SetParent(root.transform, true);
             Object.DestroyImmediate(glowRing.GetComponent<Collider>());
 
-            // Push surface cap
-            GameObject cap = Primitive("BtnCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.005f, new Vector3(0.028f, 0.007f, 0.028f), btnMat);
+            // Physical button actuator cap
+            GameObject cap = Primitive("RunCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.005f, new Vector3(0.028f, 0.007f, 0.028f), btnMat);
             cap.transform.SetParent(root.transform, true);
 
-            // Cap text
-            GameObject textObj = MakeText("BtnText", "RUN", Color.white, 0.0026f, pos + Vector3.up * 0.010f, root.transform);
-            textObj.transform.rotation = Quaternion.Euler(90, 0, 0);
+            // Cap text attached directly to moving cap
+            GameObject textObj = MakeText("BtnText", "RUN", Color.white, 0.0026f, pos + Vector3.up * 0.010f, cap.transform);
+            textObj.transform.localRotation = Quaternion.Euler(90, 0, 0);
+            textObj.transform.localPosition = new Vector3(0f, 0.004f, 0f);
             tutorial.runButtonText = textObj.GetComponent<TextMesh>();
             tutorial.runButtonText.anchor = TextAnchor.MiddleCenter;
 
-            // Prominent angled nameplate badge facing user
+            // Workbench physical button actuator
+            WorkbenchButton actuator = root.AddComponent<WorkbenchButton>();
+            actuator.actionType = WorkbenchButtonAction.Run;
+            actuator.movingCap = cap.transform;
+            actuator.tutorial = tutorial;
+
+            // Visual nameplate label (no collider)
             AddButtonNameplate(root.transform, "RUN", "SIMULATE", new Color(0.15f, 0.90f, 1.0f), new Vector3(0f, 0.004f, -0.022f));
 
             tutorial.runButtonObject = root;
@@ -602,21 +611,24 @@ namespace BenchFlow.Editor
                 MakeMaterial("ResetBaseMat", new Color(0.12f, 0.14f, 0.16f)));
             baseObj.transform.SetParent(root.transform, true);
 
-            // Push surface cap
+            // Physical button actuator cap
             GameObject cap = Primitive("ResetCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.004f, new Vector3(0.024f, 0.006f, 0.024f), btnMat);
             cap.transform.SetParent(root.transform, true);
 
-            // Cap text
-            GameObject textObj = MakeText("ResetText", "RESET", new Color(0.95f, 0.95f, 0.95f), 0.0020f, pos + Vector3.up * 0.008f, root.transform);
-            textObj.transform.rotation = Quaternion.Euler(90, 0, 0);
+            // Cap text attached directly to moving cap
+            GameObject textObj = MakeText("ResetText", "RESET", new Color(0.95f, 0.95f, 0.95f), 0.0020f, pos + Vector3.up * 0.008f, cap.transform);
+            textObj.transform.localRotation = Quaternion.Euler(90, 0, 0);
+            textObj.transform.localPosition = new Vector3(0f, 0.0035f, 0f);
             textObj.GetComponent<TextMesh>().anchor = TextAnchor.MiddleCenter;
 
-            // Prominent angled nameplate badge facing user
-            AddButtonNameplate(root.transform, "RESET", "RESTART", new Color(0.95f, 0.45f, 0.35f), new Vector3(0f, 0.004f, -0.020f));
+            // Workbench physical button actuator
+            WorkbenchButton actuator = root.AddComponent<WorkbenchButton>();
+            actuator.actionType = WorkbenchButtonAction.Reset;
+            actuator.movingCap = cap.transform;
+            actuator.tutorial = tutorial;
 
-            BoxCollider col = root.AddComponent<BoxCollider>();
-            col.center = new Vector3(0f, 0.004f, -0.007f);
-            col.size = new Vector3(0.036f, 0.018f, 0.040f);
+            // Visual nameplate label (no collider)
+            AddButtonNameplate(root.transform, "RESET", "RESTART", new Color(0.95f, 0.45f, 0.35f), new Vector3(0f, 0.004f, -0.020f));
 
             return root;
         }
@@ -631,21 +643,24 @@ namespace BenchFlow.Editor
                 MakeMaterial("UndoBaseMat", new Color(0.08f, 0.11f, 0.15f)));
             baseObj.transform.SetParent(root.transform, true);
 
-            // Push surface cap
+            // Physical button actuator cap
             GameObject cap = Primitive("UndoCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.004f, new Vector3(0.024f, 0.006f, 0.024f), btnMat);
             cap.transform.SetParent(root.transform, true);
 
-            // Cap text
-            GameObject textObj = MakeText("UndoText", "UNDO", Color.white, 0.0020f, pos + Vector3.up * 0.008f, root.transform);
-            textObj.transform.rotation = Quaternion.Euler(90, 0, 0);
+            // Cap text attached directly to moving cap
+            GameObject textObj = MakeText("UndoText", "UNDO", Color.white, 0.0020f, pos + Vector3.up * 0.008f, cap.transform);
+            textObj.transform.localRotation = Quaternion.Euler(90, 0, 0);
+            textObj.transform.localPosition = new Vector3(0f, 0.0035f, 0f);
             textObj.GetComponent<TextMesh>().anchor = TextAnchor.MiddleCenter;
 
-            // Prominent angled nameplate badge facing user
-            AddButtonNameplate(root.transform, "UNDO", "LAST WIRE", new Color(0.35f, 0.75f, 1.0f), new Vector3(0f, 0.004f, -0.020f));
+            // Workbench physical button actuator
+            WorkbenchButton actuator = root.AddComponent<WorkbenchButton>();
+            actuator.actionType = WorkbenchButtonAction.Undo;
+            actuator.movingCap = cap.transform;
+            actuator.tutorial = tutorial;
 
-            BoxCollider col = root.AddComponent<BoxCollider>();
-            col.center = new Vector3(0f, 0.004f, -0.007f);
-            col.size = new Vector3(0.036f, 0.018f, 0.040f);
+            // Visual nameplate label (no collider)
+            AddButtonNameplate(root.transform, "UNDO", "LAST WIRE", new Color(0.35f, 0.75f, 1.0f), new Vector3(0f, 0.004f, -0.020f));
 
             return root;
         }

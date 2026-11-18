@@ -167,37 +167,66 @@ namespace BenchFlow
                     if (tutorial != null && tutorial.currentStep == 2 && TrySelectWireEndpoint(hit))
                         return;
 
-                    if (hit.collider.name.Contains("Undo") || (tutorial != null && hit.collider.gameObject == tutorial.undoButtonObject))
+                    // 1. Check for physical 3D button actuator (WorkbenchButton)
+                    WorkbenchButton wbBtn = hit.collider.GetComponentInParent<WorkbenchButton>();
+                    if (wbBtn != null)
                     {
-                        workbench.UndoLastWire();
-                        TriggerHaptic(0.4f, 0.08f);
+                        wbBtn.Press();
+                        TriggerHaptic(0.6f, 0.12f);
                         return;
                     }
 
+                    // Fallback button checks: matches cap, base, or children
+                    if (hit.collider.name.IndexOf("Undo", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        (tutorial != null && tutorial.undoButtonObject != null && (hit.collider.gameObject == tutorial.undoButtonObject || hit.collider.transform.IsChildOf(tutorial.undoButtonObject.transform))))
+                    {
+                        WorkbenchButton b = tutorial != null && tutorial.undoButtonObject != null ? tutorial.undoButtonObject.GetComponentInChildren<WorkbenchButton>() : null;
+                        if (b != null) b.Press();
+                        else if (workbench != null) workbench.UndoLastWire();
+                        TriggerHaptic(0.5f, 0.1f);
+                        return;
+                    }
+
+                    if (hit.collider.name.IndexOf("Run", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        hit.collider.name.IndexOf("BtnCap", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        (tutorial != null && tutorial.runButtonObject != null && (hit.collider.gameObject == tutorial.runButtonObject || hit.collider.transform.IsChildOf(tutorial.runButtonObject.transform))))
+                    {
+                        WorkbenchButton b = tutorial != null && tutorial.runButtonObject != null ? tutorial.runButtonObject.GetComponentInChildren<WorkbenchButton>() : null;
+                        if (b != null) b.Press();
+                        else if (tutorial != null) tutorial.OnRunButtonPressed();
+                        TriggerHaptic(0.6f, 0.12f);
+                        return;
+                    }
+
+                    if (hit.collider.name.IndexOf("Reset", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        (tutorial != null && tutorial.resetButtonObject != null && (hit.collider.gameObject == tutorial.resetButtonObject || hit.collider.transform.IsChildOf(tutorial.resetButtonObject.transform))))
+                    {
+                        WorkbenchButton b = tutorial != null && tutorial.resetButtonObject != null ? tutorial.resetButtonObject.GetComponentInChildren<WorkbenchButton>() : null;
+                        if (b != null) b.Press();
+                        else if (tutorial != null) tutorial.OnResetButtonPressed();
+                        TriggerHaptic(0.5f, 0.1f);
+                        return;
+                    }
+
+                    // 2. Check for Circuit Part grab (ignore if locked in place)
                     CircuitPart part = hit.collider.GetComponentInParent<CircuitPart>();
                     if (part != null)
                     {
+                        if (part.isLocked)
+                        {
+                            if (tutorial != null)
+                            {
+                                tutorial.latestFeedback = $"{part.componentId} is locked in position.";
+                                tutorial.UpdateStepUI();
+                            }
+                            TriggerHaptic(0.2f, 0.05f);
+                            return;
+                        }
                         GrabPart(part);
                         return;
                     }
 
-                    // Check for RUN button
-                    if (hit.collider.name.Contains("Run") || (tutorial != null && hit.collider.gameObject == tutorial.runButtonObject))
-                    {
-                        tutorial.OnRunButtonPressed();
-                        TriggerHaptic(0.5f, 0.1f);
-                        return;
-                    }
-
-                    // Check for RESET button
-                    if (hit.collider.name.Contains("Reset") || (tutorial != null && hit.collider.gameObject == tutorial.resetButtonObject))
-                    {
-                        tutorial.OnResetButtonPressed();
-                        TriggerHaptic(0.5f, 0.1f);
-                        return;
-                    }
-
-                    // Check for quick wire shortcuts on Pin 13 / GND
+                    // 3. Check for quick wire shortcuts on Pin 13 / GND
                     if (hit.collider.name.Contains("13") || hit.collider.name.Contains("GND"))
                     {
                         HandlePinTrigger(hit.collider.name, hit.point);

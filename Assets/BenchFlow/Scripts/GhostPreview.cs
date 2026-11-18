@@ -12,7 +12,7 @@ namespace BenchFlow
         public static GhostPreview Instance { get; private set; }
 
         public Material ghostMaterial;
-        public Color ghostColor = new Color(0.1f, 0.85f, 1f, 0.45f);
+        public Color ghostColor = new Color(0.04f, 0.22f, 0.85f, 0.35f);
 
         GameObject ghostLed;
         GameObject ghostResistor;

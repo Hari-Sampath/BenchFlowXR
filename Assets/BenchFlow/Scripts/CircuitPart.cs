@@ -21,6 +21,7 @@ namespace BenchFlow
 
         [Header("Runtime Snap State")]
         public bool isSnapped = false;
+        public bool isLocked = false; // When placed in correct position, locked so it cannot be moved
         public HoleAddress terminalHoleA;
         public HoleAddress terminalHoleB;
         public string electricalNodeA = "";
@@ -97,6 +98,7 @@ namespace BenchFlow
         public void ReturnHome()
         {
             isSnapped = false;
+            isLocked = false;
             terminalHoleA = default;
             terminalHoleB = default;
             electricalNodeA = "";
