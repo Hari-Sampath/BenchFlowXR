@@ -17,7 +17,7 @@ namespace BenchFlow.Editor
         const float DeskTopY = 0.495f;
         // Scale the complete work area together so grid coordinates, hole spacing,
         // loose parts and target positions all remain in the same coordinate system.
-        const float BoardScale = 2.0f;
+        const float BoardScale = 2.25f;
 
         [MenuItem("BenchFlow/Create VR Prototype Scene")]
         public static void CreatePrototypeScene()
@@ -74,7 +74,7 @@ namespace BenchFlow.Editor
             gridCollider.size = new Vector3(0.165f, 0.009f, 0.055f);
 
             // 3. User supplied Arduino Uno. Fit to its real 68 x 53 mm footprint.
-            const float unoScale = 1.20f;
+            const float unoScale = 1.60f;
             Vector3 unoCenter = new Vector3(-0.245f, DeskTopY, -0.06f);
             Vector2 unoFootprint = new Vector2(0.068f * unoScale, 0.053f * unoScale);
             GameObject controller = PlaceFittedModel("Arduino Uno (user supplied)", UserModels + "ArduinoUno/source/Arduino Uno.fbx",
@@ -91,8 +91,8 @@ namespace BenchFlow.Editor
             Vector3 pinGndOffsetFromUno = new Vector3(0.031f, 0.010f, -0.014f) * unoScale;
             GameObject pin13 = MakeAnchor("UNO Digital Pin 13", unoCenter + pin13OffsetFromUno, cyanGlow);
             GameObject pinGnd = MakeAnchor("UNO GND", unoCenter + pinGndOffsetFromUno, cyanGlow);
-            MakePinLabel("13", pin13.transform.position + Vector3.up * 0.004f + Vector3.left * 0.012f, cyanGlow);
-            MakePinLabel("GND", pinGnd.transform.position + Vector3.up * 0.004f + Vector3.right * 0.012f, cyanGlow);
+            pin13.AddComponent<WireEndpointAnchor>().nodeId = "UNO:D13";
+            pinGnd.AddComponent<WireEndpointAnchor>().nodeId = "UNO:GND";
 
             // Arduino Built-in D13 LED Indicator
             GameObject unoLedObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -229,6 +229,7 @@ namespace BenchFlow.Editor
             GameObject landingPanel = BuildLandingPage(cameraObj.transform);
             tutorial.landingPanel = landingPanel;
             tutorial.guidedCard = cardObj;
+            cardObj.SetActive(false);
 
             // VR Hands
             GameObject leftHandObj = new GameObject("LeftHandController");
@@ -318,10 +319,11 @@ namespace BenchFlow.Editor
             CreateResistorLead("LeadA", root.transform, -leadSpanHalf, -bodyLength * 0.9f, leadMat, scale);
             CreateResistorLead("LeadB", root.transform, leadSpanHalf, bodyLength * 0.9f, leadMat, scale);
 
-            // Collider for grabbing
+            // Keep the invisible grab volume tight to the ceramic body. The previous
+            // full-span box extended far beyond the visible resistor and caused false picks.
             BoxCollider col = root.AddComponent<BoxCollider>();
             col.center = new Vector3(0, 0.004f * scale, 0);
-            col.size = new Vector3(leadSpanHalf * 2.2f, 0.016f * scale, 0.014f * scale);
+            col.size = new Vector3(bodyLength * 2.6f, bodyRadius * 2.0f, bodyRadius * 2.0f);
 
             CircuitPart part = root.AddComponent<CircuitPart>();
             part.componentId = "RESISTOR";
@@ -518,10 +520,11 @@ namespace BenchFlow.Editor
         static GameObject BuildLandingPage(Transform cameraTransform)
         {
             GameObject root = new GameObject("Lesson Landing Page");
-            root.transform.position = cameraTransform.position + cameraTransform.forward * 0.56f;
+            root.transform.position = cameraTransform.position + cameraTransform.forward * 0.38f;
             root.transform.rotation = cameraTransform.rotation;
+            root.transform.localScale = Vector3.one * 0.70f;
 
-            Material glass = MakeGlassMaterial("Landing Glass", new Color(0.015f, 0.035f, 0.085f, 0.98f));
+            Material glass = MakeMaterial("Landing Backplate", new Color(0.012f, 0.025f, 0.065f));
             Material neon = MakeMaterial("Landing Neon Cyan", new Color(0.12f, 0.78f, 1f), true);
             Material blue = MakeMaterial("Landing Neon Blue", new Color(0.08f, 0.22f, 0.85f), true);
             Material darkCard = MakeMaterial("Landing Lesson Card", new Color(0.025f, 0.065f, 0.13f));
@@ -531,6 +534,7 @@ namespace BenchFlow.Editor
                 new Vector3(0.64f, 0.40f, 0.012f), glass);
             backer.transform.SetParent(root.transform, false);
             backer.transform.localPosition = Vector3.zero;
+            Object.DestroyImmediate(backer.GetComponent<Collider>());
 
             // Cyan frame keeps the welcome screen in the same holographic language as the lesson card.
             CreateFrameEdge("Landing Border Top", root.transform, new Vector3(0, 0.20f, -0.008f), new Vector3(0.645f, 0.003f, 0.003f), neon);
@@ -665,12 +669,7 @@ namespace BenchFlow.Editor
             GameObject cap = Primitive("RunCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.005f, new Vector3(0.028f, 0.007f, 0.028f), btnMat);
             cap.transform.SetParent(root.transform, true);
 
-            // Cap text attached directly to moving cap
-            GameObject textObj = MakeText("BtnText", "RUN", Color.white, 0.0026f, pos + Vector3.up * 0.010f, cap.transform);
-            textObj.transform.localRotation = Quaternion.Euler(90, 0, 0);
-            textObj.transform.localPosition = new Vector3(0f, 0.004f, 0f);
-            tutorial.runButtonText = textObj.GetComponent<TextMesh>();
-            tutorial.runButtonText.anchor = TextAnchor.MiddleCenter;
+            Object.DestroyImmediate(baseObj.GetComponent<Collider>());
 
             // Workbench physical button actuator
             WorkbenchButton actuator = root.AddComponent<WorkbenchButton>();
@@ -678,14 +677,7 @@ namespace BenchFlow.Editor
             actuator.movingCap = cap.transform;
             actuator.tutorial = tutorial;
 
-            // Visual nameplate label (no collider)
-            AddButtonNameplate(root.transform, "RUN", "SIMULATE", new Color(0.15f, 0.90f, 1.0f), new Vector3(0f, 0.004f, -0.022f));
-
             tutorial.runButtonObject = root;
-
-            BoxCollider col = root.AddComponent<BoxCollider>();
-            col.center = new Vector3(0f, 0.005f, -0.008f);
-            col.size = new Vector3(0.040f, 0.020f, 0.044f);
 
             return root;
         }
@@ -704,20 +696,13 @@ namespace BenchFlow.Editor
             GameObject cap = Primitive("ResetCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.004f, new Vector3(0.024f, 0.006f, 0.024f), btnMat);
             cap.transform.SetParent(root.transform, true);
 
-            // Cap text attached directly to moving cap
-            GameObject textObj = MakeText("ResetText", "RESET", new Color(0.95f, 0.95f, 0.95f), 0.0020f, pos + Vector3.up * 0.008f, cap.transform);
-            textObj.transform.localRotation = Quaternion.Euler(90, 0, 0);
-            textObj.transform.localPosition = new Vector3(0f, 0.0035f, 0f);
-            textObj.GetComponent<TextMesh>().anchor = TextAnchor.MiddleCenter;
+            Object.DestroyImmediate(baseObj.GetComponent<Collider>());
 
             // Workbench physical button actuator
             WorkbenchButton actuator = root.AddComponent<WorkbenchButton>();
             actuator.actionType = WorkbenchButtonAction.Reset;
             actuator.movingCap = cap.transform;
             actuator.tutorial = tutorial;
-
-            // Visual nameplate label (no collider)
-            AddButtonNameplate(root.transform, "RESET", "RESTART", new Color(0.95f, 0.45f, 0.35f), new Vector3(0f, 0.004f, -0.020f));
 
             return root;
         }
@@ -736,20 +721,13 @@ namespace BenchFlow.Editor
             GameObject cap = Primitive("UndoCap", PrimitiveType.Cylinder, pos + Vector3.up * 0.004f, new Vector3(0.024f, 0.006f, 0.024f), btnMat);
             cap.transform.SetParent(root.transform, true);
 
-            // Cap text attached directly to moving cap
-            GameObject textObj = MakeText("UndoText", "UNDO", Color.white, 0.0020f, pos + Vector3.up * 0.008f, cap.transform);
-            textObj.transform.localRotation = Quaternion.Euler(90, 0, 0);
-            textObj.transform.localPosition = new Vector3(0f, 0.0035f, 0f);
-            textObj.GetComponent<TextMesh>().anchor = TextAnchor.MiddleCenter;
+            Object.DestroyImmediate(baseObj.GetComponent<Collider>());
 
             // Workbench physical button actuator
             WorkbenchButton actuator = root.AddComponent<WorkbenchButton>();
             actuator.actionType = WorkbenchButtonAction.Undo;
             actuator.movingCap = cap.transform;
             actuator.tutorial = tutorial;
-
-            // Visual nameplate label (no collider)
-            AddButtonNameplate(root.transform, "UNDO", "LAST WIRE", new Color(0.35f, 0.75f, 1.0f), new Vector3(0f, 0.004f, -0.020f));
 
             return root;
         }
@@ -811,7 +789,7 @@ namespace BenchFlow.Editor
 
         static GameObject MakeAnchor(string name, Vector3 position, Material material)
         {
-            GameObject anchor = Primitive(name, PrimitiveType.Sphere, position, Vector3.one * 0.0042f, material);
+            GameObject anchor = Primitive(name, PrimitiveType.Sphere, position, Vector3.one * 0.007f, material);
             return anchor;
         }
 

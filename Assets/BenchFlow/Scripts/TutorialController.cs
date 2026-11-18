@@ -38,6 +38,7 @@ namespace BenchFlow
         public GameObject undoButtonObject;
         public GameObject landingPanel;
         public GameObject guidedCard;
+        GameObject arduinoPinLabelsRoot;
 
         [Header("Progress State")]
         [Range(0, 3)] public int currentStep = 0; // 0=LED, 1=Resistor, 2=Wires, 3=Run
@@ -60,9 +61,24 @@ namespace BenchFlow
         void Start()
         {
             EnsureVisualPolish();
+            RemoveLandingPanelBlockingColliders();
             if (landingPanel != null) landingPanel.SetActive(true);
             if (guidedCard != null) guidedCard.SetActive(false);
             UpdateStepUI();
+        }
+
+        void RemoveLandingPanelBlockingColliders()
+        {
+            if (landingPanel == null) return;
+
+            // The backplate is decorative. Its collider sits in front of the start
+            // button and otherwise consumes desktop/VR pointer hits before the button.
+            foreach (Collider col in landingPanel.GetComponentsInChildren<Collider>(true))
+            {
+                WorkbenchButton action = col.GetComponentInParent<WorkbenchButton>();
+                if (action == null || action.actionType != WorkbenchButtonAction.StartLesson)
+                    Destroy(col);
+            }
         }
 
         public void BeginLesson()
@@ -123,6 +139,7 @@ namespace BenchFlow
             EnsureSignboardTranslucent();
             EnsureSignboardDecorations();
             EnsureButtonNameplates();
+            EnsureArduinoPinLabels();
             EnsureHoleMarkersDark();
         }
 
@@ -289,6 +306,7 @@ namespace BenchFlow
             GameObject runBtn = runButtonObject ?? GameObject.Find("3D RUN Button") ?? GameObject.Find("RUN Button");
             if (runBtn != null)
             {
+                RemoveButtonTextAndNameplates(runBtn);
                 // Remove root colliders so clicking the button housing, dock, or text plate in front does NOT actuate
                 foreach (var col in runBtn.GetComponents<Collider>()) Destroy(col);
 
@@ -313,22 +331,21 @@ namespace BenchFlow
                 rootWb.tutorial = this;
                 rootWb.workbench = workbench;
 
-                if (runBtn.transform.Find("RUN_Nameplate") == null)
-                {
-                    AddRuntimeNameplate(runBtn.transform, "RUN", "SIMULATE", new Color(0.15f, 0.90f, 1.0f), new Vector3(0f, 0.004f, -0.022f));
-                }
-
                 // Strip any colliders from children other than the moving cap
                 foreach (var col in runBtn.GetComponentsInChildren<Collider>())
                 {
                     if (cap != null && col.transform != cap) Destroy(col);
                 }
+
+                AddRuntimeNameplate(runBtn.transform, "RUN", "", new Color(0.25f, 0.88f, 1f),
+                    new Vector3(0f, -0.002f, -0.032f));
             }
 
             // 2. RESET Button
             GameObject resetBtn = resetButtonObject ?? GameObject.Find("3D RESET Button") ?? GameObject.Find("RESET Button");
             if (resetBtn != null)
             {
+                RemoveButtonTextAndNameplates(resetBtn);
                 // Remove root colliders so clicking the text plate in front does NOT actuate
                 foreach (var col in resetBtn.GetComponents<Collider>()) Destroy(col);
 
@@ -351,21 +368,20 @@ namespace BenchFlow
                 rootWb.tutorial = this;
                 rootWb.workbench = workbench;
 
-                if (resetBtn.transform.Find("RESET_Nameplate") == null)
-                {
-                    AddRuntimeNameplate(resetBtn.transform, "RESET", "RESTART", new Color(0.95f, 0.45f, 0.35f), new Vector3(0f, 0.004f, -0.020f));
-                }
-
                 foreach (var col in resetBtn.GetComponentsInChildren<Collider>())
                 {
                     if (cap != null && col.transform != cap) Destroy(col);
                 }
+
+                AddRuntimeNameplate(resetBtn.transform, "RESET", "", new Color(1f, 0.55f, 0.48f),
+                    new Vector3(0f, -0.002f, -0.030f));
             }
 
             // 3. UNDO Button
             GameObject undoBtn = undoButtonObject ?? GameObject.Find("3D UNDO Button") ?? GameObject.Find("UNDO Button");
             if (undoBtn != null)
             {
+                RemoveButtonTextAndNameplates(undoBtn);
                 // Remove root colliders so clicking the text plate in front does NOT actuate
                 foreach (var col in undoBtn.GetComponents<Collider>()) Destroy(col);
 
@@ -388,15 +404,13 @@ namespace BenchFlow
                 rootWb.tutorial = this;
                 rootWb.workbench = workbench;
 
-                if (undoBtn.transform.Find("UNDO_Nameplate") == null)
-                {
-                    AddRuntimeNameplate(undoBtn.transform, "UNDO", "LAST WIRE", new Color(0.35f, 0.75f, 1.0f), new Vector3(0f, 0.004f, -0.020f));
-                }
-
                 foreach (var col in undoBtn.GetComponentsInChildren<Collider>())
                 {
                     if (cap != null && col.transform != cap) Destroy(col);
                 }
+
+                AddRuntimeNameplate(undoBtn.transform, "UNDO", "", new Color(0.48f, 0.72f, 1f),
+                    new Vector3(0f, -0.002f, -0.030f));
             }
 
             // 4. Workbench Control Console Dock
@@ -435,8 +449,9 @@ namespace BenchFlow
             plate.name = label + "_Nameplate";
             plate.transform.SetParent(parent, false);
             plate.transform.localPosition = localOffset;
-            plate.transform.localRotation = Quaternion.Euler(38f, 0f, 0f);
-            plate.transform.localScale = new Vector3(0.038f, 0.012f, 0.002f);
+            Quaternion facing = GetConsoleLabelFacing(plate.transform.position);
+            plate.transform.rotation = facing;
+            plate.transform.localScale = new Vector3(label == "RESET" ? 0.046f : 0.040f, 0.010f, 0.0016f);
             Shader sh = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             if (sh != null)
             {
@@ -449,7 +464,7 @@ namespace BenchFlow
             GameObject textObj = new GameObject(label + "_Label");
             textObj.transform.SetParent(parent, false);
             textObj.transform.localPosition = localOffset + new Vector3(0f, 0.0016f, -0.0018f);
-            textObj.transform.localRotation = Quaternion.Euler(38f, 0f, 0f);
+            textObj.transform.rotation = GetConsoleLabelFacing(textObj.transform.position);
             TextMesh tm = textObj.AddComponent<TextMesh>();
             tm.text = label;
             tm.color = labelColor;
@@ -465,7 +480,7 @@ namespace BenchFlow
                 GameObject subObj = new GameObject(label + "_Sub");
                 subObj.transform.SetParent(parent, false);
                 subObj.transform.localPosition = localOffset + new Vector3(0f, -0.0030f, -0.0018f);
-                subObj.transform.localRotation = Quaternion.Euler(38f, 0f, 0f);
+                subObj.transform.rotation = GetConsoleLabelFacing(subObj.transform.position);
                 TextMesh subTm = subObj.AddComponent<TextMesh>();
                 subTm.text = subtitle;
                 subTm.color = new Color(0.65f, 0.70f, 0.78f);
@@ -473,6 +488,92 @@ namespace BenchFlow
                 subTm.characterSize = 0.00090f;
                 subTm.anchor = TextAnchor.MiddleCenter;
                 subTm.alignment = TextAlignment.Center;
+            }
+        }
+
+        Quaternion GetConsoleLabelFacing(Vector3 labelPosition)
+        {
+            Camera viewer = Camera.main;
+            if (viewer == null) return Quaternion.Euler(38f, 0f, 0f);
+            Vector3 towardViewer = viewer.transform.position - labelPosition;
+            // TextMesh's front face points opposite the workbench camera-facing
+            // direction here. Turn the plane toward the viewer while retaining
+            // the viewer's up axis so the glyphs read left-to-right and upright.
+            Quaternion cameraFacing = Quaternion.LookRotation(towardViewer.normalized, viewer.transform.up);
+            return cameraFacing * Quaternion.Euler(0f, 180f, 0f);
+        }
+
+        void EnsureArduinoPinLabels()
+        {
+            if (markerPin13 == null || markerPinGnd == null) return;
+
+            // The original labels were standalone objects, so marker visibility did not
+            // hide them on the landing screen. Replace them with a grouped, step-gated pair.
+            GameObject oldPin13Label = GameObject.Find("Text 13");
+            GameObject oldGndLabel = GameObject.Find("Text GND");
+            if (oldPin13Label != null) Destroy(oldPin13Label);
+            if (oldGndLabel != null) Destroy(oldGndLabel);
+
+            if (arduinoPinLabelsRoot == null)
+            {
+                arduinoPinLabelsRoot = GameObject.Find("Arduino Terminal Labels");
+                if (arduinoPinLabelsRoot == null)
+                {
+                    arduinoPinLabelsRoot = new GameObject("Arduino Terminal Labels");
+                    arduinoPinLabelsRoot.SetActive(false);
+                    CreateArduinoTerminalLabel(arduinoPinLabelsRoot.transform, "D13", markerPin13.transform.position,
+                        new Color(0.28f, 0.88f, 1f));
+                    CreateArduinoTerminalLabel(arduinoPinLabelsRoot.transform, "GND", markerPinGnd.transform.position,
+                        new Color(0.62f, 0.82f, 1f));
+                }
+            }
+        }
+
+        void CreateArduinoTerminalLabel(Transform parent, string label, Vector3 terminalPosition, Color textColor)
+        {
+            Vector3 tagPosition = terminalPosition + Vector3.right * 0.019f + Vector3.up * 0.0014f;
+
+            GameObject plate = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            plate.name = label + " Terminal Plate";
+            plate.transform.SetParent(parent, false);
+            plate.transform.position = tagPosition;
+            plate.transform.rotation = Quaternion.identity;
+            plate.transform.localScale = new Vector3(0.025f, 0.0012f, 0.008f);
+            Renderer plateRenderer = plate.GetComponent<Renderer>();
+            plateRenderer.sharedMaterial = CreateRuntimeGlowMat(label + " Terminal Plate Material",
+                new Color(0.025f, 0.065f, 0.10f));
+            Destroy(plate.GetComponent<Collider>());
+
+            GameObject accent = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            accent.name = label + " Terminal Accent";
+            accent.transform.SetParent(parent, false);
+            accent.transform.position = tagPosition + Vector3.left * 0.0114f + Vector3.up * 0.0008f;
+            accent.transform.rotation = Quaternion.identity;
+            accent.transform.localScale = new Vector3(0.0013f, 0.0005f, 0.006f);
+            accent.GetComponent<Renderer>().sharedMaterial = CreateRuntimeGlowMat(label + " Terminal Accent Material", textColor);
+            Destroy(accent.GetComponent<Collider>());
+
+            GameObject textObject = new GameObject(label + " Terminal Label");
+            textObject.transform.SetParent(parent, false);
+            textObject.transform.position = tagPosition + Vector3.up * 0.00075f;
+            textObject.transform.rotation = GetConsoleLabelFacing(textObject.transform.position);
+            TextMesh text = textObject.AddComponent<TextMesh>();
+            text.text = label;
+            text.color = textColor;
+            text.fontSize = 64;
+            text.characterSize = 0.00082f;
+            text.fontStyle = FontStyle.Bold;
+            text.anchor = TextAnchor.MiddleCenter;
+            text.alignment = TextAlignment.Center;
+        }
+
+        void RemoveButtonTextAndNameplates(GameObject button)
+        {
+            foreach (Transform child in button.GetComponentsInChildren<Transform>(true))
+            {
+                if (child == button.transform) continue;
+                if (child.name.EndsWith("_Nameplate", System.StringComparison.Ordinal) || child.GetComponent<TextMesh>() != null)
+                    Destroy(child.gameObject);
             }
         }
 
@@ -588,6 +689,8 @@ namespace BenchFlow
             SetMarkerActive(markerHole8b, currentStep == 2);
             SetMarkerActive(markerPinGnd, currentStep == 2);
             SetMarkerActive(markerHole16a, currentStep == 2);
+            if (arduinoPinLabelsRoot != null)
+                arduinoPinLabelsRoot.SetActive(currentStep == 2);
 
             // Keep control console buttons visible throughout the entire lesson
             if (runButtonObject != null)
@@ -659,6 +762,33 @@ namespace BenchFlow
             if (runButtonText != null)
             {
                 runButtonText.text = isProgramRunning ? "STOP" : "RUN";
+            }
+
+            SetButtonNameplatesVisible(landingPanel == null || !landingPanel.activeInHierarchy);
+        }
+
+        void SetButtonNameplatesVisible(bool visible)
+        {
+            GameObject[] buttons =
+            {
+                runButtonObject,
+                resetButtonObject ?? GameObject.Find("3D RESET Button") ?? GameObject.Find("RESET Button"),
+                undoButtonObject ?? GameObject.Find("3D UNDO Button") ?? GameObject.Find("UNDO Button")
+            };
+
+            foreach (GameObject button in buttons)
+            {
+                if (button == null) continue;
+                foreach (Transform child in button.GetComponentsInChildren<Transform>(true))
+                {
+                    if (child == button.transform) continue;
+                    if (child.name.EndsWith("_Nameplate", StringComparison.Ordinal) ||
+                        child.name.EndsWith("_Label", StringComparison.Ordinal) ||
+                        child.name.EndsWith("_Sub", StringComparison.Ordinal))
+                    {
+                        child.gameObject.SetActive(visible);
+                    }
+                }
             }
         }
 

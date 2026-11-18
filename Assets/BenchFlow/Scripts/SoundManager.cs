@@ -48,8 +48,8 @@ namespace BenchFlow
             tickClip = CreateTickSound();
         }
 
-        public void PlaySnap(Vector3 position) => PlayAt(snapClip, position, 0.7f, 1.0f);
-        public void PlayWire(Vector3 position) => PlayAt(wireClip, position, 0.65f, 1.0f);
+        public void PlaySnap(Vector3 position) => PlayAt(snapClip, position, 0.72f, UnityEngine.Random.Range(0.96f, 1.04f));
+        public void PlayWire(Vector3 position) => PlayAt(wireClip, position, 0.68f, UnityEngine.Random.Range(0.97f, 1.03f));
         public void PlaySuccess(Vector3 position) => PlayAt(successClip, position, 0.85f, 1.0f);
         public void PlayButton(Vector3 position) => PlayAt(buttonClip, position, 0.6f, 1.0f);
         public void PlayError(Vector3 position) => PlayAt(errorClip, position, 0.55f, 0.9f);
@@ -66,7 +66,9 @@ namespace BenchFlow
             a.pitch = pitch;
             a.spatialBlend = 0.85f;
             a.minDistance = 0.1f;
-            a.maxDistance = 5f;
+            a.maxDistance = 4f;
+            a.rolloffMode = AudioRolloffMode.Logarithmic;
+            a.dopplerLevel = 0f;
             a.Play();
             Destroy(temp, clip.length + 0.1f);
         }
@@ -74,17 +76,20 @@ namespace BenchFlow
         AudioClip CreateSnapSound()
         {
             int sampleRate = 44100;
-            int length = (int)(sampleRate * 0.06f); // 60ms
+            int length = (int)(sampleRate * 0.085f);
             float[] samples = new float[length];
             for (int i = 0; i < length; i++)
             {
                 float t = i / (float)sampleRate;
-                float env = Mathf.Exp(-t * 80f);
-                float freq = 1200f - t * 8000f;
-                float wave = Mathf.Sin(2f * Mathf.PI * freq * t) + (UnityEngine.Random.value * 2f - 1f) * 0.4f;
-                samples[i] = wave * env * 0.8f;
+                float tick = Mathf.Exp(-t * 520f);
+                float body = Mathf.Exp(-t * 68f);
+                float noise = UnityEngine.Random.value * 2f - 1f;
+                float click = noise * tick * 0.26f;
+                float resonance = Mathf.Sin(2f * Mathf.PI * 1180f * t) * body * 0.33f +
+                                  Mathf.Sin(2f * Mathf.PI * 620f * t) * Mathf.Exp(-t * 105f) * 0.22f;
+                samples[i] = Mathf.Clamp(click + resonance, -0.8f, 0.8f);
             }
-            AudioClip clip = AudioClip.Create("Snap", length, 1, sampleRate, false);
+            AudioClip clip = AudioClip.Create("ComponentSeatClick", length, 1, sampleRate, false);
             clip.SetData(samples, 0);
             return clip;
         }
@@ -92,16 +97,23 @@ namespace BenchFlow
         AudioClip CreateWireSound()
         {
             int sampleRate = 44100;
-            int length = (int)(sampleRate * 0.08f); // 80ms
+            int length = (int)(sampleRate * 0.14f);
             float[] samples = new float[length];
             for (int i = 0; i < length; i++)
             {
                 float t = i / (float)sampleRate;
-                float env = Mathf.Exp(-t * 50f);
-                float wave = Mathf.Sin(2f * Mathf.PI * 880f * t) * 0.7f + Mathf.Sin(2f * Mathf.PI * 1760f * t) * 0.3f;
-                samples[i] = wave * env;
+                float first = Mathf.Exp(-Mathf.Abs(t - 0.008f) * 420f);
+                float second = Mathf.Exp(-Mathf.Abs(t - 0.052f) * 360f);
+                float noise = UnityEngine.Random.value * 2f - 1f;
+                float connectorClicks = noise * (first * 0.18f + second * 0.16f);
+                float firstResonance = Mathf.Sin(2f * Mathf.PI * 1680f * t) * first * 0.25f +
+                                       Mathf.Sin(2f * Mathf.PI * 980f * t) * first * 0.12f;
+                float secondResonance = Mathf.Sin(2f * Mathf.PI * 1320f * t) * second * 0.24f +
+                                        Mathf.Sin(2f * Mathf.PI * 760f * t) * second * 0.11f;
+                float softCableTone = Mathf.Sin(2f * Mathf.PI * 420f * t) * Mathf.Exp(-t * 30f) * 0.06f;
+                samples[i] = Mathf.Clamp(connectorClicks + firstResonance + secondResonance + softCableTone, -0.8f, 0.8f);
             }
-            AudioClip clip = AudioClip.Create("WirePlug", length, 1, sampleRate, false);
+            AudioClip clip = AudioClip.Create("JumperWireConnect", length, 1, sampleRate, false);
             clip.SetData(samples, 0);
             return clip;
         }

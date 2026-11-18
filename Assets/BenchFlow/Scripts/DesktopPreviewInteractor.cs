@@ -18,6 +18,7 @@ namespace BenchFlow
         public CircuitPart led;
         public Transform unoD13;
         public Transform unoGnd;
+        [Min(1f)] public float wireEndpointPickRadiusPixels = 30f;
 
         CircuitPart heldPart;
 
@@ -108,45 +109,19 @@ namespace BenchFlow
             if (previewCamera == null) return;
             Ray ray = previewCamera.ScreenPointToRay(Input.mousePosition);
 
+            // Wire targets are much smaller than a desktop pointer can reliably hit at
+            // the workbench camera distance. Resolve the Arduino terminal in screen
+            // space first, even when the pointer narrowly misses its physics collider.
+            if (tutorial != null && tutorial.currentStep == 2 && TrySelectWireEndpoint(ray))
+                return;
+
             if (Physics.Raycast(ray, out RaycastHit hit, 10f))
             {
-                if (tutorial != null && tutorial.currentStep == 2 && TrySelectWireEndpoint(hit))
-                    return;
-
                 // 1. Check for physical 3D button actuator (WorkbenchButton)
                 WorkbenchButton wbBtn = hit.collider.GetComponentInParent<WorkbenchButton>();
                 if (wbBtn != null)
                 {
                     wbBtn.Press();
-                    return;
-                }
-
-                // Fallback button checks: matches cap, base, or children
-                if (hit.collider.name.IndexOf("Undo", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    (tutorial != null && tutorial.undoButtonObject != null && (hit.collider.gameObject == tutorial.undoButtonObject || hit.collider.transform.IsChildOf(tutorial.undoButtonObject.transform))))
-                {
-                    WorkbenchButton b = tutorial != null && tutorial.undoButtonObject != null ? tutorial.undoButtonObject.GetComponentInChildren<WorkbenchButton>() : null;
-                    if (b != null) b.Press();
-                    else if (workbench != null) workbench.UndoLastWire();
-                    return;
-                }
-
-                if (hit.collider.name.IndexOf("Run", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    hit.collider.name.IndexOf("BtnCap", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    (tutorial != null && tutorial.runButtonObject != null && (hit.collider.gameObject == tutorial.runButtonObject || hit.collider.transform.IsChildOf(tutorial.runButtonObject.transform))))
-                {
-                    WorkbenchButton b = tutorial != null && tutorial.runButtonObject != null ? tutorial.runButtonObject.GetComponentInChildren<WorkbenchButton>() : null;
-                    if (b != null) b.Press();
-                    else if (tutorial != null) tutorial.OnRunButtonPressed();
-                    return;
-                }
-
-                if (hit.collider.name.IndexOf("Reset", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    (tutorial != null && tutorial.resetButtonObject != null && (hit.collider.gameObject == tutorial.resetButtonObject || hit.collider.transform.IsChildOf(tutorial.resetButtonObject.transform))))
-                {
-                    WorkbenchButton b = tutorial != null && tutorial.resetButtonObject != null ? tutorial.resetButtonObject.GetComponentInChildren<WorkbenchButton>() : null;
-                    if (b != null) b.Press();
-                    else if (workbench != null) workbench.ResetWorkbench();
                     return;
                 }
 
@@ -181,26 +156,91 @@ namespace BenchFlow
             }
         }
 
-        bool TrySelectWireEndpoint(RaycastHit hit)
+        bool TrySelectWireEndpoint(Ray ray)
         {
             if (workbench == null || breadboard == null) return false;
-            string node = null;
-            Vector3 point = hit.point;
-            string colliderName = hit.collider.name;
 
-            if (colliderName.Contains("13") || hit.collider.transform == unoD13)
-                node = "UNO:D13";
-            else if (colliderName.Contains("GND") || colliderName.Contains("gnd") || hit.collider.transform == unoGnd)
-                node = "UNO:GND";
-            else if (hit.collider.GetComponentInParent<BreadboardGrid>() != null &&
-                     breadboard.TrySnap(hit.point, out HoleAddress hole, out Vector3 snapped))
+            if (TrySelectArduinoEndpointFromPointer(out string endpointNode, out Vector3 endpointPosition))
             {
-                node = breadboard.ElectricalNode(hole);
-                point = snapped;
+                workbench.SelectWireEndpoint(endpointNode, endpointPosition);
+                return true;
             }
 
-            if (node == null) return false;
-            workbench.SelectWireEndpoint(node, point);
+            RaycastHit[] hits = Physics.RaycastAll(ray, 10f);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+            foreach (RaycastHit candidate in hits)
+            {
+                Collider candidateCollider = candidate.collider;
+                if (candidateCollider == null) continue;
+
+                // Let the ordinary interaction handler activate a button cap.
+                if (candidateCollider.GetComponentInParent<WorkbenchButton>() != null) return false;
+
+                string node = null;
+                Vector3 point = candidate.point;
+                WireEndpointAnchor terminal = candidateCollider.GetComponentInParent<WireEndpointAnchor>();
+
+                if (terminal != null)
+                {
+                    node = terminal.nodeId;
+                    point = terminal.WorldPosition;
+                }
+                else if (candidateCollider.GetComponentInParent<BreadboardGrid>() != null &&
+                         breadboard.TrySnap(candidate.point, out HoleAddress hole, out _))
+                {
+                    node = breadboard.ElectricalNode(hole);
+                    point = breadboard.HoleConnectionPosition(hole);
+                }
+
+                if (node != null)
+                {
+                    workbench.SelectWireEndpoint(node, point);
+                    return true;
+                }
+
+                // Locked components can cover the target hole visually and physically.
+                // Continue down the ray so the board grid beneath them remains selectable.
+                if (candidateCollider.GetComponentInParent<CircuitPart>() != null) continue;
+
+                // The Arduino body collider covers its pin header. Keep scanning so the
+                // dedicated D13/GND target behind it can be selected.
+                if (candidateCollider.GetComponentInParent<BreadboardGrid>() != null) return false;
+            }
+            return false;
+        }
+
+        bool TrySelectArduinoEndpointFromPointer(out string node, out Vector3 worldPosition)
+        {
+            node = null;
+            worldPosition = default;
+            if (previewCamera == null) return false;
+
+            Vector2 pointerPosition = Input.mousePosition;
+            WireEndpointAnchor[] anchors = FindObjectsByType<WireEndpointAnchor>(
+                FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+
+            float bestDistance = wireEndpointPickRadiusPixels;
+            WireEndpointAnchor bestAnchor = null;
+            foreach (WireEndpointAnchor anchor in anchors)
+            {
+                if (anchor == null || (anchor.nodeId != "UNO:D13" && anchor.nodeId != "UNO:GND"))
+                    continue;
+
+                Vector3 screenPosition = previewCamera.WorldToScreenPoint(anchor.WorldPosition);
+                if (screenPosition.z <= 0f) continue;
+
+                float distance = Vector2.Distance(pointerPosition, new Vector2(screenPosition.x, screenPosition.y));
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    bestAnchor = anchor;
+                }
+            }
+
+            if (bestAnchor == null) return false;
+            node = bestAnchor.nodeId;
+            worldPosition = bestAnchor.WorldPosition;
             return true;
         }
 
@@ -231,7 +271,7 @@ namespace BenchFlow
         {
             if (workbench == null || breadboard == null) return;
             Vector3 start = unoD13 != null ? unoD13.position : new Vector3(-0.165f, 0.523f, -0.075f);
-            Vector3 end = breadboard.HolePosition(breadboard.GetHole("8b"));
+            Vector3 end = breadboard.HoleConnectionPosition(breadboard.GetHole("8b"));
             workbench.ConnectWireVisual("UNO:D13", "strip:A:8", start, end, Color.red);
         }
 
@@ -239,7 +279,7 @@ namespace BenchFlow
         {
             if (workbench == null || breadboard == null) return;
             Vector3 start = unoGnd != null ? unoGnd.position : new Vector3(-0.165f, 0.523f, -0.035f);
-            Vector3 end = breadboard.HolePosition(breadboard.GetHole("16a"));
+            Vector3 end = breadboard.HoleConnectionPosition(breadboard.GetHole("16a"));
             workbench.ConnectWireVisual("strip:A:16", "UNO:GND", end, start, new Color(0.1f, 0.85f, 1f));
         }
     }

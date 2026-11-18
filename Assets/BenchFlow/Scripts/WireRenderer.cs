@@ -32,8 +32,9 @@ namespace BenchFlow
             if (lineRenderer == null) lineRenderer = gameObject.AddComponent<LineRenderer>();
 
             lineRenderer.useWorldSpace = true;
-            lineRenderer.startWidth = 0.0035f;
-            lineRenderer.endWidth = 0.0035f;
+            lineRenderer.startWidth = 0.0028f;
+            lineRenderer.endWidth = 0.0028f;
+            lineRenderer.numCapVertices = 4;
             lineRenderer.positionCount = pointCount;
 
             Shader shader = Shader.Find("Sprites/Default");

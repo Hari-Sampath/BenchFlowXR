@@ -70,6 +70,12 @@ namespace BenchFlow
             return transform.TransformPoint(HoleLocalPosition(hole));
         }
 
+        /// <summary>Returns a wire endpoint slightly inside the board socket, preserving its exact grid center.</summary>
+        public Vector3 HoleConnectionPosition(HoleAddress hole, float insertionDepth = 0.0025f)
+        {
+            return HolePosition(hole) - transform.up * Mathf.Max(0f, insertionDepth);
+        }
+
         /// <summary>Returns local space position of a given hole address.</summary>
         public Vector3 HoleLocalPosition(HoleAddress hole)
         {
@@ -147,7 +153,7 @@ namespace BenchFlow
         }
 
         /// <summary>Snap a world position to the nearest breadboard hole.</summary>
-        public bool TrySnap(Vector3 worldPosition, out HoleAddress hole, out Vector3 snappedWorldPosition, float maxDistance = 0.015f)
+        public bool TrySnap(Vector3 worldPosition, out HoleAddress hole, out Vector3 snappedWorldPosition, float maxDistance = 0.0045f)
         {
             Vector3 local = transform.InverseTransformPoint(worldPosition);
 
@@ -189,8 +195,9 @@ namespace BenchFlow
 
             snappedWorldPosition = HolePosition(hole);
             float dist = Vector3.Distance(worldPosition, snappedWorldPosition);
-            float effectiveMaxDist = maxDistance * Mathf.Max(transform.lossyScale.x, 1f);
-            return dist <= effectiveMaxDist;
+            // Both positions are in world space. Do not multiply the tolerance by the
+            // board scale; doing so made the snap radius several rows wide on the enlarged board.
+            return dist <= maxDistance;
         }
 
         /// <summary>Electrical strip identifier. Holes on the same 5-hole strip share the same ID.</summary>

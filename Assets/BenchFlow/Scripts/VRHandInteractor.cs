@@ -164,7 +164,7 @@ namespace BenchFlow
                 // Look for grab candidates
                 if ((triggerDown || gripDown) && hasHit)
                 {
-                    if (tutorial != null && tutorial.currentStep == 2 && TrySelectWireEndpoint(hit))
+                    if (tutorial != null && tutorial.currentStep == 2 && TrySelectWireEndpoint(ray))
                         return;
 
                     // 1. Check for physical 3D button actuator (WorkbenchButton)
@@ -173,38 +173,6 @@ namespace BenchFlow
                     {
                         wbBtn.Press();
                         TriggerHaptic(0.6f, 0.12f);
-                        return;
-                    }
-
-                    // Fallback button checks: matches cap, base, or children
-                    if (hit.collider.name.IndexOf("Undo", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        (tutorial != null && tutorial.undoButtonObject != null && (hit.collider.gameObject == tutorial.undoButtonObject || hit.collider.transform.IsChildOf(tutorial.undoButtonObject.transform))))
-                    {
-                        WorkbenchButton b = tutorial != null && tutorial.undoButtonObject != null ? tutorial.undoButtonObject.GetComponentInChildren<WorkbenchButton>() : null;
-                        if (b != null) b.Press();
-                        else if (workbench != null) workbench.UndoLastWire();
-                        TriggerHaptic(0.5f, 0.1f);
-                        return;
-                    }
-
-                    if (hit.collider.name.IndexOf("Run", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        hit.collider.name.IndexOf("BtnCap", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        (tutorial != null && tutorial.runButtonObject != null && (hit.collider.gameObject == tutorial.runButtonObject || hit.collider.transform.IsChildOf(tutorial.runButtonObject.transform))))
-                    {
-                        WorkbenchButton b = tutorial != null && tutorial.runButtonObject != null ? tutorial.runButtonObject.GetComponentInChildren<WorkbenchButton>() : null;
-                        if (b != null) b.Press();
-                        else if (tutorial != null) tutorial.OnRunButtonPressed();
-                        TriggerHaptic(0.6f, 0.12f);
-                        return;
-                    }
-
-                    if (hit.collider.name.IndexOf("Reset", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        (tutorial != null && tutorial.resetButtonObject != null && (hit.collider.gameObject == tutorial.resetButtonObject || hit.collider.transform.IsChildOf(tutorial.resetButtonObject.transform))))
-                    {
-                        WorkbenchButton b = tutorial != null && tutorial.resetButtonObject != null ? tutorial.resetButtonObject.GetComponentInChildren<WorkbenchButton>() : null;
-                        if (b != null) b.Press();
-                        else if (tutorial != null) tutorial.OnResetButtonPressed();
-                        TriggerHaptic(0.5f, 0.1f);
                         return;
                     }
 
@@ -235,26 +203,48 @@ namespace BenchFlow
             }
         }
 
-        bool TrySelectWireEndpoint(RaycastHit hit)
+        bool TrySelectWireEndpoint(Ray ray)
         {
             if (workbench == null || breadboard == null) return false;
-            string node = null;
-            Vector3 point = hit.point;
-            string colliderName = hit.collider.name;
+            RaycastHit[] hits = Physics.RaycastAll(ray, rayDistance, interactionMask);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
-            if (colliderName.Contains("13")) node = "UNO:D13";
-            else if (colliderName.Contains("GND") || colliderName.Contains("gnd")) node = "UNO:GND";
-            else if (hit.collider.GetComponentInParent<BreadboardGrid>() != null &&
-                     breadboard.TrySnap(hit.point, out HoleAddress hole, out Vector3 snapped))
+            foreach (RaycastHit candidate in hits)
             {
-                node = breadboard.ElectricalNode(hole);
-                point = snapped;
-            }
+                Collider candidateCollider = candidate.collider;
+                if (candidateCollider == null) continue;
 
-            if (node == null) return false;
-            workbench.SelectWireEndpoint(node, point);
-            TriggerHaptic(0.4f, 0.06f);
-            return true;
+                if (candidateCollider.GetComponentInParent<WorkbenchButton>() != null) return false;
+
+                string node = null;
+                Vector3 point = candidate.point;
+                WireEndpointAnchor terminal = candidateCollider.GetComponentInParent<WireEndpointAnchor>();
+
+                if (terminal != null)
+                {
+                    node = terminal.nodeId;
+                    point = terminal.WorldPosition;
+                }
+                else if (candidateCollider.GetComponentInParent<BreadboardGrid>() != null &&
+                         breadboard.TrySnap(candidate.point, out HoleAddress hole, out _))
+                {
+                    node = breadboard.ElectricalNode(hole);
+                    point = breadboard.HoleConnectionPosition(hole);
+                }
+
+                if (node != null)
+                {
+                    workbench.SelectWireEndpoint(node, point);
+                    TriggerHaptic(0.4f, 0.06f);
+                    return true;
+                }
+
+                if (candidateCollider.GetComponentInParent<CircuitPart>() != null) continue;
+                // The Arduino body collider can be hit before its pin targets. Continue
+                // through it so D13/GND remain reachable, but stop after the board surface.
+                if (candidateCollider.GetComponentInParent<BreadboardGrid>() != null) return false;
+            }
+            return false;
         }
 
         void GrabPart(CircuitPart part)
@@ -279,14 +269,14 @@ namespace BenchFlow
             if (colliderName.Contains("13"))
             {
                 // Connect Pin 13 to row 8b
-                Vector3 holePos = breadboard.HolePosition(breadboard.GetHole("8b"));
+                Vector3 holePos = breadboard.HoleConnectionPosition(breadboard.GetHole("8b"));
                 workbench.ConnectWireVisual("UNO:D13", "strip:A:8", worldPos, holePos, Color.red);
                 TriggerHaptic(0.5f, 0.1f);
             }
             else if (colliderName.Contains("GND") || colliderName.Contains("gnd"))
             {
                 // Connect GND to row 16a
-                Vector3 holePos = breadboard.HolePosition(breadboard.GetHole("16a"));
+                Vector3 holePos = breadboard.HoleConnectionPosition(breadboard.GetHole("16a"));
                 workbench.ConnectWireVisual("strip:A:16", "UNO:GND", holePos, worldPos, new Color(0.1f, 0.85f, 1f));
                 TriggerHaptic(0.5f, 0.1f);
             }
