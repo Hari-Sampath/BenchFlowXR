@@ -7,7 +7,8 @@ namespace BenchFlow
     {
         Run,
         Reset,
-        Undo
+        Undo,
+        StartLesson
     }
 
     /// <summary>
@@ -79,6 +80,9 @@ namespace BenchFlow
                     break;
                 case WorkbenchButtonAction.Undo:
                     if (workbench != null) workbench.UndoLastWire();
+                    break;
+                case WorkbenchButtonAction.StartLesson:
+                    if (tutorial != null) tutorial.BeginLesson();
                     break;
             }
         }

@@ -226,6 +226,10 @@ namespace BenchFlow.Editor
             vrRig.headTransform = cameraObj.transform;
             vrRig.centerEyeCamera = cam;
 
+            GameObject landingPanel = BuildLandingPage(cameraObj.transform);
+            tutorial.landingPanel = landingPanel;
+            tutorial.guidedCard = cardObj;
+
             // VR Hands
             GameObject leftHandObj = new GameObject("LeftHandController");
             leftHandObj.transform.SetParent(vrRigObj.transform, false);
@@ -509,6 +513,91 @@ namespace BenchFlow.Editor
             tutorial.codeDisplayNode = codeObj.GetComponent<TextMesh>();
 
             return root;
+        }
+
+        static GameObject BuildLandingPage(Transform cameraTransform)
+        {
+            GameObject root = new GameObject("Lesson Landing Page");
+            root.transform.position = cameraTransform.position + cameraTransform.forward * 0.56f;
+            root.transform.rotation = cameraTransform.rotation;
+
+            Material glass = MakeGlassMaterial("Landing Glass", new Color(0.015f, 0.035f, 0.085f, 0.98f));
+            Material neon = MakeMaterial("Landing Neon Cyan", new Color(0.12f, 0.78f, 1f), true);
+            Material blue = MakeMaterial("Landing Neon Blue", new Color(0.08f, 0.22f, 0.85f), true);
+            Material darkCard = MakeMaterial("Landing Lesson Card", new Color(0.025f, 0.065f, 0.13f));
+            Material mutedCard = MakeMaterial("Landing Locked Card", new Color(0.025f, 0.04f, 0.075f));
+
+            GameObject backer = Primitive("Landing Backplate", PrimitiveType.Cube, root.transform.position,
+                new Vector3(0.64f, 0.40f, 0.012f), glass);
+            backer.transform.SetParent(root.transform, false);
+            backer.transform.localPosition = Vector3.zero;
+
+            // Cyan frame keeps the welcome screen in the same holographic language as the lesson card.
+            CreateFrameEdge("Landing Border Top", root.transform, new Vector3(0, 0.20f, -0.008f), new Vector3(0.645f, 0.003f, 0.003f), neon);
+            CreateFrameEdge("Landing Border Bottom", root.transform, new Vector3(0, -0.20f, -0.008f), new Vector3(0.645f, 0.003f, 0.003f), neon);
+            CreateFrameEdge("Landing Border Left", root.transform, new Vector3(-0.32f, 0, -0.008f), new Vector3(0.003f, 0.40f, 0.003f), neon);
+            CreateFrameEdge("Landing Border Right", root.transform, new Vector3(0.32f, 0, -0.008f), new Vector3(0.003f, 0.40f, 0.003f), neon);
+
+            GameObject eyebrow = MakeText("Landing Eyebrow", "BENCHFLOW XR     /     INTERACTIVE ELECTRONICS LAB",
+                new Color(0.30f, 0.84f, 1f), 0.0011f, new Vector3(-0.285f, 0.163f, -0.012f), root.transform);
+            eyebrow.GetComponent<TextMesh>().fontStyle = FontStyle.Bold;
+            GameObject title = MakeText("Landing Title", "Build your first circuit.", Color.white,
+                0.0023f, new Vector3(-0.285f, 0.119f, -0.012f), root.transform);
+            title.GetComponent<TextMesh>().fontStyle = FontStyle.Bold;
+            MakeText("Landing Subtitle", "A hands-on path from one glowing LED to a working blink.",
+                new Color(0.68f, 0.78f, 0.91f), 0.00105f, new Vector3(-0.285f, 0.087f, -0.012f), root.transform);
+
+            // Lesson 1 is ready to play; the next cards establish a consistent home for future lessons.
+            MakeLandingLessonCard(root.transform, 0.026f, "01", "LED BLINK", "Place the LED, complete the circuit, run the code", darkCard, neon, true);
+            MakeLandingLessonCard(root.transform, -0.049f, "02", "RESISTOR LAB", "Explore resistance and current", mutedCard, blue, false);
+            MakeLandingLessonCard(root.transform, -0.124f, "03", "SERIES CIRCUITS", "Connect components in a new way", mutedCard, blue, false);
+
+            GameObject button = Primitive("Start LED Lesson Button", PrimitiveType.Cube,
+                root.transform.position, new Vector3(0.18f, 0.042f, 0.012f), neon);
+            button.transform.SetParent(root.transform, false);
+            button.transform.localPosition = new Vector3(-0.215f, -0.144f, -0.009f);
+            WorkbenchButton startAction = button.AddComponent<WorkbenchButton>();
+            startAction.actionType = WorkbenchButtonAction.StartLesson;
+            GameObject buttonText = MakeText("Start LED Lesson Label", "START LESSON   →", new Color(0.01f, 0.04f, 0.08f),
+                0.0010f, new Vector3(-0.295f, -0.144f, -0.018f), root.transform);
+            buttonText.GetComponent<TextMesh>().fontStyle = FontStyle.Bold;
+            MakeText("Landing Hint", "DESKTOP  CLICK TO BEGIN     •     VR  POINT + TRIGGER",
+                new Color(0.44f, 0.60f, 0.76f), 0.00078f, new Vector3(0.00f, -0.181f, -0.012f), root.transform);
+
+            return root;
+        }
+
+        static void MakeLandingLessonCard(Transform parent, float y, string number, string title, string description,
+            Material cardMat, Material accentMat, bool available)
+        {
+            GameObject card = Primitive("Lesson " + number + " Card", PrimitiveType.Cube, parent.position,
+                new Vector3(0.57f, 0.064f, 0.006f), cardMat);
+            card.transform.SetParent(parent, false);
+            card.transform.localPosition = new Vector3(0, y, -0.009f);
+            Object.DestroyImmediate(card.GetComponent<Collider>());
+
+            GameObject stripe = Primitive("Lesson " + number + " Accent", PrimitiveType.Cube, parent.position,
+                new Vector3(0.003f, 0.064f, 0.002f), accentMat);
+            stripe.transform.SetParent(parent, false);
+            stripe.transform.localPosition = new Vector3(-0.282f, y, -0.013f);
+            Object.DestroyImmediate(stripe.GetComponent<Collider>());
+
+            Color titleColor = available ? Color.white : new Color(0.56f, 0.64f, 0.76f);
+            Color detailColor = available ? new Color(0.64f, 0.78f, 0.91f) : new Color(0.40f, 0.49f, 0.62f);
+            GameObject index = MakeText("Lesson " + number + " Number", number, accentMat.color, 0.0011f,
+                new Vector3(-0.258f, y + 0.008f, -0.014f), parent);
+            index.GetComponent<TextMesh>().fontStyle = FontStyle.Bold;
+            GameObject name = MakeText("Lesson " + number + " Title", title, titleColor, 0.0011f,
+                new Vector3(-0.208f, y + 0.010f, -0.014f), parent);
+            name.GetComponent<TextMesh>().fontStyle = FontStyle.Bold;
+            MakeText("Lesson " + number + " Description", description, detailColor, 0.00078f,
+                new Vector3(-0.208f, y - 0.014f, -0.014f), parent);
+            TextMesh state = MakeText("Lesson " + number + " State", available ? "READY" : "COMING SOON",
+                available ? new Color(0.24f, 0.95f, 0.74f) : new Color(0.40f, 0.53f, 0.68f), 0.00075f,
+                new Vector3(0.19f, y, -0.014f), parent).GetComponent<TextMesh>();
+            state.anchor = TextAnchor.MiddleRight;
+            state.alignment = TextAlignment.Right;
+            state.fontStyle = FontStyle.Bold;
         }
 
         static void CreateFrameEdge(string name, Transform parent, Vector3 localPos, Vector3 localScale, Material mat)

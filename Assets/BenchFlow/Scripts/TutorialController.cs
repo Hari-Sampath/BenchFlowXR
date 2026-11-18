@@ -36,6 +36,8 @@ namespace BenchFlow
         public TextMesh runButtonText;
         public GameObject resetButtonObject;
         public GameObject undoButtonObject;
+        public GameObject landingPanel;
+        public GameObject guidedCard;
 
         [Header("Progress State")]
         [Range(0, 3)] public int currentStep = 0; // 0=LED, 1=Resistor, 2=Wires, 3=Run
@@ -58,6 +60,17 @@ namespace BenchFlow
         void Start()
         {
             EnsureVisualPolish();
+            if (landingPanel != null) landingPanel.SetActive(true);
+            if (guidedCard != null) guidedCard.SetActive(false);
+            UpdateStepUI();
+        }
+
+        public void BeginLesson()
+        {
+            if (landingPanel != null) landingPanel.SetActive(false);
+            if (guidedCard != null) guidedCard.SetActive(true);
+            currentStep = 0;
+            latestFeedback = "Follow the glowing targets on the breadboard.";
             UpdateStepUI();
         }
 
@@ -69,7 +82,7 @@ namespace BenchFlow
 
             if (stepInstructionText == null)
             {
-                TextMesh[] texts = FindObjectsByType<TextMesh>(FindObjectsInactive.Exclude);
+                TextMesh[] texts = FindObjectsByType<TextMesh>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
                 foreach (var t in texts)
                 {
                     if (t.name.Contains("Instruction") || t.name.Contains("Step instruction"))
